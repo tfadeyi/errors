@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "$ref": "#/definitions/Application",
+  "$id": "https://tfadeyi.github.io/schemas/v0.0.1/aloe.schema.json",
+  "title": "Aloe Specification",
+  "description": "The aloe specification",
+  "definitions": {
+    "Application": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string",
+          "description": "Display name of the application"
+        },
+        "base_url": {
+          "type": "string",
+          "format": "uri-template"
+        },
+        "version": {
+          "type": "string",
+          "format": "string"
+        },
+        "errors_definitions": {
+          "description": "List of application error definitions.",
+          "$ref": "#/definitions/ErrorDefinitions"
+        }
+      },
+      "required": [
+        "base_url",
+        "version",
+        "name"
+      ],
+      "title": "Application"
+    },
+    "ErrorDefinitions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Error"
+      },
+      "required": [],
+      "title": "ErrorDefinitions"
+    },
+    "Error": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "Unique code of the error. (max: 40 characters)",
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "description": "Name of the error, to be displayed. (max: 40 characters)",
+          "type": "string",
+          "maxLength": 40
+        },
+        "summary": {
+          "description": "Short summary of the error. (max: 70 characters)",
+          "type": "string",
+          "maxLength": 70
+        },
+        "details": {
+          "description": "Detailed description of the error.",
+          "type": "string"
+        },
+        "meta": {
+          "description": "Metadata information about the error.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "loc": {
+              "description": "",
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Full path of the error location"
+                },
+                "line": {
+                  "type": "integer",
+                  "description": "The line number of error location"
+                }
+              },
+              "required": [
+                "path",
+                "line"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "summary",
+        "title",
+        "code"
+      ],
+      "title": "Error"
+    }
+  }
+}

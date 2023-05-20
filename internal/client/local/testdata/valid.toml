@@ -1,0 +1,11 @@
+BaseUrl = "https://github.com/tfadeyi/my-app"
+Description = "Sample application"
+Name = "my-app"
+Title = "My Application"
+Version = "v0.0.1"
+
+[ErrorsDefinitions]
+[ErrorsDefinitions.error_something_code]
+code = "error_something_code"
+summary = "This is a summary of the error that will wrap the application error."
+title = "Error On Something"

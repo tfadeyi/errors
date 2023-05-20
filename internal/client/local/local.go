@@ -7,18 +7,21 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"errors"
-	api "github.com/tfadeyi/aloe-bindings/src/go/src"
+	toml "github.com/pelletier/go-toml/v2"
 	"github.com/tfadeyi/go-aloe/internal/client"
-	"gopkg.in/yaml.v3"
+	"github.com/tfadeyi/go-aloe/pkg/api"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type (
 	Client struct {
-		SpecSource string
-		Spec       *api.Spec
-		Logger     *log.Logger
+		SpecFilename string
+		SpecSource   []byte
+		Spec         *api.Application
+		Logger       *log.Logger
 	}
 )
 
@@ -26,50 +29,87 @@ var (
 	ErrSpecNotExist      = errors.New("specification file doesn't exist")
 	ErrFetchingSpec      = errors.New("couldn't fetch the specification file data")
 	ErrUnsupportedFormat = errors.New("the specification is in an invalid format")
+	ErrFailedParsingSpec = errors.New("could not parse the aloe specification file")
 )
 
-func New(source string) (client.Client, error) {
-	if _, err := os.Stat(source); errors.Is(err, os.ErrNotExist) {
-		return nil, ErrSpecNotExist
+// New returns a new instance of the client.Client, it performs checks on the inputs and errors if the check fails
+// filename is path to aloe specification file
+// source is the in-memory aloe specification
+func New(filename string, source []byte) (client.Client, error) {
+	if filename != "" {
+		_, err := os.Stat(filename)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrSpecNotExist
+		}
+
+		source, err = os.ReadFile(filename)
+		if err != nil {
+			return nil, err
+		}
 	}
-	buf, err := os.ReadFile(source)
+
+	spec, err := decodeSpec(filename, source)
 	if err != nil {
 		return nil, err
 	}
-	var spec api.Spec
-	err = yaml.Unmarshal(buf, &spec)
-	if err != nil {
-		return nil, err
+
+	if spec == nil || (spec.Name == "") {
+		return nil, ErrFailedParsingSpec
 	}
-	return &Client{SpecSource: source, Spec: &spec}, nil
+
+	return &Client{SpecFilename: filename, SpecSource: source, Spec: spec}, nil
 }
 
-func NewLazy(source string) client.Client {
+func decodeSpec(filename string, buf []byte) (*api.Application, error) {
+	var spec api.Application
+	var err error
+
+	if filename == "" {
+		if err = toml.Unmarshal(buf, &spec); err != nil {
+			if err = yaml.Unmarshal(buf, &spec); err != nil {
+				return nil, fmt.Errorf("%s: [%w]", ErrFailedParsingSpec, err)
+			}
+		}
+		return &spec, nil
+	}
+
+	switch filepath.Ext(filename) {
+	case ".yaml":
+		err = yaml.Unmarshal(buf, &spec)
+	case ".json":
+		err = json.Unmarshal(buf, &spec)
+	case ".toml":
+		err = toml.Unmarshal(buf, &spec)
+	default:
+		err = ErrUnsupportedFormat
+	}
+	return &spec, err
+}
+
+func NewLazy(filename string, source []byte) client.Client {
 	return &Client{
-		SpecSource: source,
-		Spec:       nil,
+		SpecFilename: filename,
+		SpecSource:   source,
+		Spec:         nil,
 	}
 }
 
 func (l *Client) GenerateErrorMessageFromCode(ctx context.Context, code string) (string, error) {
+	code = strings.TrimSpace(code)
 	if l.Spec == nil {
-		if _, err := os.Stat(l.SpecSource); errors.Is(err, os.ErrNotExist) {
-			return "", ErrSpecNotExist
-		}
-		buf, err := os.ReadFile(l.SpecSource)
-		if err != nil {
-			return "", err
+		var err error
+		if l.SpecFilename != "" {
+			_, err = os.Stat(l.SpecFilename)
+			if errors.Is(err, os.ErrNotExist) {
+				return "", ErrSpecNotExist
+			}
+			l.SpecSource, err = os.ReadFile(l.SpecFilename)
+			if err != nil {
+				return "", err
+			}
 		}
 
-		switch filepath.Ext(l.SpecSource) {
-		case ".yaml":
-			err = yaml.Unmarshal(buf, &l.Spec)
-		case ".json":
-			err = json.Unmarshal(buf, &l.Spec)
-		default:
-
-		}
-		if err != nil {
+		if l.Spec, err = decodeSpec(l.SpecFilename, l.SpecSource); err != nil {
 			return "", err
 		}
 	}
@@ -79,7 +119,13 @@ func (l *Client) GenerateErrorMessageFromCode(ctx context.Context, code string) 
 	if !ok {
 		return "", errors.New("no error was not found in the error specification file")
 	}
-	url := fmt.Sprintf("%s/%s/%s", l.Spec.BaseURL, l.Spec.Name, code)
-	result := fmt.Sprintf("%s\nfor additional info check %s.", v.Summary, url)
+
+	// TODO validate inputs
+	name := strings.TrimSpace(l.Spec.Name)
+	baseURL := strings.TrimSpace(l.Spec.BaseUrl)
+	summary := strings.TrimSpace(v.Summary)
+
+	url := fmt.Sprintf("%s/%s/%s", baseURL, name, code)
+	result := fmt.Sprintf("%s\nfor additional info check %s", summary, url)
 	return result, nil
 }
