@@ -125,7 +125,7 @@ func (l *Client) GenerateErrorMessageFromCode(ctx context.Context, code string) 
 	baseURL := strings.TrimSpace(l.Spec.BaseUrl)
 	summary := strings.TrimSpace(v.Summary)
 
-	url := fmt.Sprintf("%s/%s/%s", baseURL, name, code)
+	url := fmt.Sprintf("%s/%s/errors_definitions/%s", baseURL, name, code)
 	result := fmt.Sprintf("%s\nfor additional info check %s", summary, url)
 	return result, nil
 }
