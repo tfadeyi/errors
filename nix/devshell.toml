@@ -1,0 +1,19 @@
+[[env]]
+name = "GOROOT"
+value = ""
+
+[devshell]
+name = "develpment-shell"
+motd = """{106}Go-Aloe Development Shell{reset}
+Use CTRL-D to leave the shell
+"""
+
+packages = [
+    "go",
+    "gotools",
+    "go-tools",
+    "golangci-lint",
+    "goreleaser",
+    "moq"
+]
+
