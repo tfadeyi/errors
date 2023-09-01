@@ -9,7 +9,16 @@
 
 <div align="center">
 
-<img title="error.fyi" alt="error.fyi" src="./docs/logo.png" style="height: 450px;">
+<img title="error.fyi" alt="error.fyi" src="./docs/logo.png">
+
+<p>
+    <strong>[<a href="https://docs.error.fyi">Docs</a>]</strong>
+    <strong>[<a href="#-features">Features</a>]</strong>
+    <strong>[<a href="#-installation">Installation</a>]</strong>
+    <strong>[<a href="#-get-started">Get Started</a>]</strong>
+</p>
+
+</div>
 
 #### Generate and maintain user facing error documentation from in-code annotations.
 
@@ -25,18 +34,14 @@ The **error.fyi** library will then wrap application errors with additional cont
 [![Language](https://img.shields.io/github/go-mod/go-version/tfadeyi/errors?style=for-the-badge)](https://github.com/tfadeyi/errors)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tfadeyi/errors?style=for-the-badge)](https://goreportcard.com/report/github.com/tfadeyi/errors)
 
-
-<p>
-<strong>[<a href="https://docs.error.fyi">Docs</a>]</strong>
-<strong>[<a href="#-features">Features</a>]</strong>
-<strong>[<a href="#-installation">Installation</a>]</strong>
-<strong>[<a href="#-get-started">Get Started</a>]</strong>
-</p>
-</div>
-
-
 > **Note**
 > The project is not yet production ready.
+
+## Motivation
+
+**"I wish I had a stackoverflow page for the error this CLI just returned"**.
+
+This is my attempt at making it easier for developers to improve the experience of their users during troubleshooting.
 
 ## 🚀 Get Started
 
@@ -44,8 +49,10 @@ The **error.fyi** library will then wrap application errors with additional cont
 <img src="./docs/demo.gif">
 </p>
 
+Create an empty `errors.yaml` file in the same directory as the main.go.
+
 ```shell
-touch error.yaml # in the same directory as the main.go
+touch error.yaml
 ```
 Add in-code annotations for the errors the application's users might see.
 ```go
@@ -96,13 +103,7 @@ The tool has failed to delete the artefacts from the previous execution.
 for additional info check https://github.com/tfadeyi/my-app/my-app/error_something_code
 ```
 
-## Motivation
-
-**"I wish I had a stackoverflow page for the error this CLI just returned"**.
-
-This is my attempt at making it easier for developers to improve the experience of their users during troubleshooting.
-
-## Features
+## 📚 Features
 
 - Easy to embed in existing Go applications with **go:generate** and **embed**.
 - Generate markdown error documentation, with both **default** and **custom** markdown templates.
@@ -116,7 +117,7 @@ This is my attempt at making it easier for developers to improve the experience 
 
 
 ```sh
- go get -u github.com/tfadeyi/go-aloe@latest
+ go get -u github.com/tfadeyi/errors@latest
 ```
 
 ### CLI
@@ -143,6 +144,13 @@ This is my attempt at making it easier for developers to improve the experience 
 
 </details>
 
+## Try it!
+
+### Nix
+
+```shell
+nix develop github:tfadeyi/errors
+```
 
 ## 🖥️  Usage
 
@@ -165,4 +173,4 @@ Global Flags:
 ```
 
 ## License
-Go-aloe is released under the [MIT](./LICENSE) License.
+error.fyi is released under the [MIT](./LICENSE) License.

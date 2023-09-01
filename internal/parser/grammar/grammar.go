@@ -90,7 +90,6 @@ func (g Grammar) parse() (*api.Manifest, error) {
 		Title:     "",
 		Solutions: api.Solutions{},
 	}
-	//var meta = &api.ErrorMeta{Loc: nil}
 	var foundSolution = &api.Solution{
 		Code:  "",
 		Short: "",

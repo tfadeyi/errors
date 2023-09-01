@@ -9,14 +9,12 @@ linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: github.com/tfadeyi/go-aloe
+    local-prefixes: github.com/tfadeyi/errors
   golint:
     min-confidence: 0
   govet:
     check-shadowing: true
     enable-all: true
-  misspell:
-    locale: GB
 
 linters:
   disable-all: true
