@@ -6,9 +6,6 @@ import "encoding/json"
 import "fmt"
 
 type ErrorMetaLoc struct {
-	// The line number of error location
-	Line int `json:"line" yaml:"line" mapstructure:"line"`
-
 	// Full path of the error location
 	Path string `json:"path" yaml:"path" mapstructure:"path"`
 }
@@ -18,9 +15,6 @@ func (j *ErrorMetaLoc) UnmarshalJSON(b []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
-	}
-	if v, ok := raw["line"]; !ok || v == nil {
-		return fmt.Errorf("field line in ErrorMetaLoc: required")
 	}
 	if v, ok := raw["path"]; !ok || v == nil {
 		return fmt.Errorf("field path in ErrorMetaLoc: required")
@@ -34,28 +28,68 @@ func (j *ErrorMetaLoc) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type Error struct {
-	// Unique code of the error. (max: 40 characters)
-	Code string `json:"code" yaml:"code" mapstructure:"code"`
-
-	// Detailed description of the error.
-	Details *string `json:"details,omitempty" yaml:"details,omitempty" mapstructure:"details,omitempty"`
-
-	// Metadata information about the error.
-	Meta *ErrorMeta `json:"meta,omitempty" yaml:"meta,omitempty" mapstructure:"meta,omitempty"`
-
-	// Short summary of the error. (max: 70 characters)
-	Summary string `json:"summary" yaml:"summary" mapstructure:"summary"`
-
-	// Name of the error, to be displayed. (max: 40 characters)
-	Title string `json:"title" yaml:"title" mapstructure:"title"`
-}
-
 // Metadata information about the error.
 type ErrorMeta struct {
 	// Loc corresponds to the JSON schema field "loc".
 	Loc *ErrorMetaLoc `json:"loc,omitempty" yaml:"loc,omitempty" mapstructure:"loc,omitempty"`
 }
+
+type Solution struct {
+	// Unique identifier of the error solution.
+	Code string `json:"code" yaml:"code" mapstructure:"code"`
+
+	// Long corresponds to the JSON schema field "long".
+	Long *string `json:"long,omitempty" yaml:"long,omitempty" mapstructure:"long,omitempty"`
+
+	// Short corresponds to the JSON schema field "short".
+	Short string `json:"short" yaml:"short" mapstructure:"short"`
+
+	// Title of the solution's error.
+	Title *string `json:"title,omitempty" yaml:"title,omitempty" mapstructure:"title,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Solution) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if v, ok := raw["code"]; !ok || v == nil {
+		return fmt.Errorf("field code in Solution: required")
+	}
+	if v, ok := raw["short"]; !ok || v == nil {
+		return fmt.Errorf("field short in Solution: required")
+	}
+	type Plain Solution
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = Solution(plain)
+	return nil
+}
+
+type Error struct {
+	// Unique code of the error. (max: 40 characters)
+	Code string `json:"code" yaml:"code" mapstructure:"code"`
+
+	// Detailed description of the error.
+	Long *string `json:"long,omitempty" yaml:"long,omitempty" mapstructure:"long,omitempty"`
+
+	// Metadata information about the error.
+	Meta *ErrorMeta `json:"meta,omitempty" yaml:"meta,omitempty" mapstructure:"meta,omitempty"`
+
+	// Short short of the error. (max: 70 characters)
+	Short string `json:"short" yaml:"short" mapstructure:"short"`
+
+	// Solutions corresponds to the JSON schema field "solutions".
+	Solutions Solutions `json:"solutions,omitempty" yaml:"solutions,omitempty" mapstructure:"solutions,omitempty"`
+
+	// Name of the error, to be displayed. (max: 40 characters)
+	Title string `json:"title" yaml:"title" mapstructure:"title"`
+}
+
+type Solutions map[string]Solution
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (j *Error) UnmarshalJSON(b []byte) error {
@@ -66,8 +100,8 @@ func (j *Error) UnmarshalJSON(b []byte) error {
 	if v, ok := raw["code"]; !ok || v == nil {
 		return fmt.Errorf("field code in Error: required")
 	}
-	if v, ok := raw["summary"]; !ok || v == nil {
-		return fmt.Errorf("field summary in Error: required")
+	if v, ok := raw["short"]; !ok || v == nil {
+		return fmt.Errorf("field short in Error: required")
 	}
 	if v, ok := raw["title"]; !ok || v == nil {
 		return fmt.Errorf("field title in Error: required")
@@ -81,48 +115,48 @@ func (j *Error) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type Application struct {
+type ErrorDefinitions map[string]Error
+
+type Manifest struct {
 	// BaseUrl corresponds to the JSON schema field "base_url".
 	BaseUrl string `json:"base_url" yaml:"base_url" mapstructure:"base_url"`
 
 	// Description corresponds to the JSON schema field "description".
 	Description *string `json:"description,omitempty" yaml:"description,omitempty" mapstructure:"description,omitempty"`
 
-	// List of application error definitions.
+	// List of the manifest's error definitions.
 	ErrorsDefinitions ErrorDefinitions `json:"errors_definitions,omitempty" yaml:"errors_definitions,omitempty" mapstructure:"errors_definitions,omitempty"`
 
 	// Name corresponds to the JSON schema field "name".
 	Name string `json:"name" yaml:"name" mapstructure:"name"`
 
-	// Display name of the application
+	// Display name of the manifest
 	Title *string `json:"title,omitempty" yaml:"title,omitempty" mapstructure:"title,omitempty"`
 
 	// Version corresponds to the JSON schema field "version".
 	Version string `json:"version" yaml:"version" mapstructure:"version"`
 }
 
-type ErrorDefinitions map[string]Error
-
 // UnmarshalJSON implements json.Unmarshaler.
-func (j *Application) UnmarshalJSON(b []byte) error {
+func (j *Manifest) UnmarshalJSON(b []byte) error {
 	var raw map[string]interface{}
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
 	if v, ok := raw["base_url"]; !ok || v == nil {
-		return fmt.Errorf("field base_url in Application: required")
+		return fmt.Errorf("field base_url in Manifest: required")
 	}
 	if v, ok := raw["name"]; !ok || v == nil {
-		return fmt.Errorf("field name in Application: required")
+		return fmt.Errorf("field name in Manifest: required")
 	}
 	if v, ok := raw["version"]; !ok || v == nil {
-		return fmt.Errorf("field version in Application: required")
+		return fmt.Errorf("field version in Manifest: required")
 	}
-	type Plain Application
+	type Plain Manifest
 	var plain Plain
 	if err := json.Unmarshal(b, &plain); err != nil {
 		return err
 	}
-	*j = Application(plain)
+	*j = Manifest(plain)
 	return nil
 }

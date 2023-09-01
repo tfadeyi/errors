@@ -1,1 +1,1 @@
-package goaloe
+package errors

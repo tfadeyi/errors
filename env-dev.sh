@@ -1,0 +1,1 @@
+alias develop='nix develop .'
