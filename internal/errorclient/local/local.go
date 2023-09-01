@@ -39,9 +39,7 @@ func New(opts errorclient.Options) errorclient.Client {
 
 func decodeSpec(buf []byte) (*api.Manifest, error) {
 	var spec api.Manifest
-	var err error
-
-	err = yaml.Unmarshal(buf, &spec)
+	var err = yaml.Unmarshal(buf, &spec)
 	return &spec, err
 }
 

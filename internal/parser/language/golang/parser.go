@@ -194,7 +194,6 @@ func (p *Parser) warn(err error, keyValues ...interface{}) {
 // Parse will parse the source code for sloth annotations.
 // In case of error during parsing, Parse returns an empty sloth.Spec
 func (p *Parser) Parse(ctx context.Context) (map[string]any, error) {
-
 	// collect all sloth annotations from the file and add them to the spec struct
 	if p.sourceFile != "" || p.sourceContent != nil {
 		file, err := getFile(p.sourceFile, p.sourceContent)
@@ -241,7 +240,6 @@ func (p *Parser) Parse(ctx context.Context) (map[string]any, error) {
 
 	// collect all sloth annotations from packages and add them to the spec struct
 	for _, pkg := range applicationPackages {
-
 		// Prioritise parsing the main.go if present in the package
 		for filename, file := range pkg.Files {
 			if strings.Contains(filename, "main.go") {

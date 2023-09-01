@@ -54,7 +54,7 @@ func (o *Options) Complete() error {
 	// Check if output is a directory and error if the format chosen is YAML
 	if file, err := os.Stat(o.OutputFileAndDirectory); !errors.Is(err, os.ErrNotExist) {
 		if file.IsDir() && o.Format == generate.Yaml {
-// Here we add more specific info about the error they may encounter in this configuration
+			// Here we add more specific info about the error they may encounter in this configuration
 
 			// @fyi.error code invalid_yaml_output_file
 			// @fyi.error title invalid_yaml_output_file
