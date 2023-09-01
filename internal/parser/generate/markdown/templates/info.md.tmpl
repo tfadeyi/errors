@@ -1,0 +1,18 @@
+---
+title: {{ .Name }}
+---
+
+## {{ .Name }}
+
+**Application**: {{ .Name }}
+**Version**: {{ .Version }}
+
+### Description
+
+{{ .Description }}
+
+### Error definitions
+
+{{ range $key, $value := .ErrorsDefinitions }}
+  * [**{{ $key }}**](./errors/{{ $key }}): {{ $value.Short }}
+{{ end }}

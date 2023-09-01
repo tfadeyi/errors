@@ -1,138 +1,106 @@
-//go:generate rm -f ./pkg/api/api.go
-//go:generate gojsonschema -p api ./schema/schema.json -o ./pkg/api/api.go
-
-package goaloe
+package errors
 
 import (
 	"context"
 	"fmt"
+	"github.com/tfadeyi/errors/internal/errorclient"
+	"github.com/tfadeyi/errors/internal/errorclient/local"
 	"log"
-	"os"
-
-	"github.com/tfadeyi/go-aloe/internal/client"
-	"github.com/tfadeyi/go-aloe/internal/client/local"
 )
 
 type (
-	errorHandler struct {
-		client client.Client
+	// WrapperOption is a more atomic to configure the different wrapperOptions rather than passing the entire Options struct.
+	WrapperOption func(o *wrapperOptions)
+
+	// wrapperOptions contains all the different configuration values available to the wrapper
+	wrapperOptions struct {
+		// logger is internal logger for the wrapper, leave nil to avoid logging
+		// WrapperOption: func logger(logger *log.Logger) WrapperOption
 		logger *log.Logger
+		// sourceFilename allows clients to set the location of the file containing the error specification
+		// WrapperOption: func ManifestFilename(filename string) WrapperOption
+		sourceFilename string
+		// source allows clients to pass the contents of the error specification file as a []byte
+		// WrapperOption: func Specification(source []byte) WrapperOption
+		source []byte
+		// errorDefinitionPath is the parent URL path where the errors will be available
+		errorDefinitionPath string
+		// showErrorURL enables and disables the errors' URL being shown when the error is returned
+		showErrorURL bool
 	}
 
-	// Options for the aloe error handler. Use it to configure the aloe error handler
-	Options struct {
-		// SourceFilename is the location of the file containing the aloe specification for the target service
-		SourceFilename string
-		// Source is the in-memory aloe specification for the target service
-		Source []byte
-		// Logger is the logger used by the error handler to report errors that might occur during execution.
-		// Set as nil, if no logging is wanted.
-		Logger *log.Logger
+	// Wrapper is the wrapper struct for errors
+	Wrapper struct {
+		Options *wrapperOptions
+		client  errorclient.Client
 	}
+)
+
+var (
+	global = New(ManifestFilename(defaultErrorSpecificationLocation))
 )
 
 const (
-	DefaultAloeFilename = "default.aloe"
+	defaultErrorSpecificationLocation = "./default.yaml"
 )
 
-// newInstance generates a new instance of the aloe error handler
-func newInstance(opts Options) (*errorHandler, error) {
-	cl, err := local.New(opts.SourceFilename, opts.Source)
-	if err != nil {
-		return nil, err
+func New(opts ...WrapperOption) *Wrapper {
+	wrapper := &Wrapper{
+		client:  nil,
+		Options: &wrapperOptions{},
+	}
+	for _, opt := range opts {
+		opt(wrapper.Options)
 	}
 
-	return &errorHandler{
-		logger: opts.Logger,
-		client: cl,
-	}, nil
+	cl := local.New(errorclient.Options{
+		SourceFilename: wrapper.Options.sourceFilename,
+		Source:         wrapper.Options.source,
+	})
+
+	wrapper.client = cl
+
+	return wrapper
 }
 
-func lazyInstance(opts Options) *errorHandler {
-	cl := local.NewLazy(opts.SourceFilename, opts.Source)
-
-	return &errorHandler{
-		logger: opts.Logger,
-		client: cl,
-	}
+func (w *Wrapper) SetSpecification(content []byte) {
+	w.Options.source = content
+	w.client = local.New(errorclient.Options{
+		SourceFilename: w.Options.sourceFilename,
+		Source:         w.Options.source,
+	})
 }
 
-// DefaultOrDie returns an instance of the Aloe error handler, using the default configuration, or panics.
-// It expects the aloe specification to be in the current working directory, as default.aloe.(yaml|json|toml) .
-func DefaultOrDie() *errorHandler {
-	dir, err := os.Getwd()
-	if err != nil {
-		panic(fmt.Errorf("go-aloe was unable to get the current working directory: [%w]", err))
-	}
-
-	specs := []string{
-		fmt.Sprintf("%s/%s.toml", dir, DefaultAloeFilename),
-		fmt.Sprintf("%s/%s.yaml", dir, DefaultAloeFilename),
-		fmt.Sprintf("%s/%s.json", dir, DefaultAloeFilename)}
-	var instance *errorHandler
-
-	for _, src := range specs {
-		instance, err = newInstance(Options{
-			SourceFilename: src,
-			Logger:         log.Default(),
-		})
-		if err == nil {
-			break
-		}
-	}
-
-	if err != nil {
-		panic(fmt.Errorf("go-aloe default handler failed to initialise: [%w]", err))
-	}
-
-	return instance
+func (w *Wrapper) SetSpecificationFilename(filepath string) {
+	w.Options.sourceFilename = filepath
+	w.client = local.New(errorclient.Options{
+		SourceFilename: w.Options.sourceFilename,
+		Source:         w.Options.source,
+	})
 }
 
-// Default returns an instance of the Aloe error handler, using the default configuration, or errors.
-// It expects the aloe specification to be in the current working directory, as default.aloe.(yaml|json|toml) .
-func Default() (*errorHandler, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("go-aloe was unable to get current working directory: [%w]", err)
-	}
-
-	specs := []string{
-		fmt.Sprintf("%s/%s.toml", dir, DefaultAloeFilename),
-		fmt.Sprintf("%s/%s.yaml", dir, DefaultAloeFilename),
-		fmt.Sprintf("%s/%s.json", dir, DefaultAloeFilename)}
-	var instance *errorHandler
-
-	for _, src := range specs {
-		instance, err = newInstance(Options{
-			SourceFilename: src,
-			Logger:         log.Default(),
-		})
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("go-aloe default handler failed to initialise: [%w]", err)
-	}
-
-	return instance, nil
+func (w *Wrapper) SetLogger(logger *log.Logger) {
+	w.Options.logger = logger
 }
 
-// WithOptions returns an instance of the Aloe error handler, with the given configuration.
-// Use this to remove logging or specify a different location for the Aloe specification file.
-func WithOptions(opts Options) *errorHandler {
-	instance := lazyInstance(opts)
-	return instance
+func (w *Wrapper) SetErrorParentPath(parentDir string) {
+	w.Options.errorDefinitionPath = parentDir
+}
+
+func (w *Wrapper) ShowErrorURL(show bool) {
+	w.Options.showErrorURL = show
 }
 
 // ErrorWithContext wraps the incoming error with error defined by the Aloe specification according to the input code.
 // if no error is found in the specification, the original error is returned.
-func (instance *errorHandler) ErrorWithContext(ctx context.Context, err error, code string) error {
-	if err == nil {
+func (w *Wrapper) ErrorWithContext(ctx context.Context, err error, code string) error {
+	if w == nil || err == nil {
 		return err
 	}
 
-	newErrMessage, genErr := instance.client.GenerateErrorMessageFromCode(ctx, code)
+	newErrMessage, genErr := w.client.GenerateErrorMessageFromCode(ctx, code)
 	if genErr != nil {
-		instance.log(genErr.Error())
+		w.log(genErr.Error())
 		return err
 	}
 
@@ -141,22 +109,87 @@ func (instance *errorHandler) ErrorWithContext(ctx context.Context, err error, c
 
 // Error wraps the incoming error with error defined by the Aloe specification according to the input code.
 // if no error is found in the specification, the original error is returned.
-func (instance *errorHandler) Error(err error, code string) error {
-	if err == nil {
+func (w *Wrapper) Error(err error, code string) error {
+	if w == nil || err == nil {
+		return err
+	}
+	newErrMessage, errFromGenerator := w.client.GenerateErrorMessageFromCode(context.Background(), code)
+	if errFromGenerator != nil {
+		w.log(errFromGenerator.Error())
 		return err
 	}
 
-	newErrMessage, genErr := instance.client.GenerateErrorMessageFromCode(context.Background(), code)
-	if genErr != nil {
-		instance.log(genErr.Error())
-		return err
-	}
-
-	return fmt.Errorf("%s: [%w]", newErrMessage, err)
+	return fmt.Errorf("[%w]\n%s", err, newErrMessage)
 }
 
-func (instance *errorHandler) log(msg string, keyVal ...any) {
-	if instance.logger != nil {
-		instance.logger.Printf(msg, keyVal...)
+func (w *Wrapper) log(msg string, keyVal ...any) {
+	if w.Options.logger != nil {
+		w.Options.logger.Printf(msg, keyVal...)
+	}
+}
+
+// Global Wrapper Functions //
+
+func SetSpecification(content []byte) {
+	global.SetSpecification(content)
+}
+
+func SetSpecificationFilename(filepath string) {
+	global.SetSpecificationFilename(filepath)
+}
+
+func SetLogger(logger *log.Logger) {
+	global.SetLogger(logger)
+}
+
+func SetErrorParentPath(parentDir string) {
+	global.SetErrorParentPath(parentDir)
+}
+
+func ShowErrorURL(show bool) {
+	global.ShowErrorURL(show)
+}
+
+// ErrorWithContext wraps the incoming error with error defined by the Aloe specification according to the input code.
+// if no error is found in the specification, the original error is returned.
+func ErrorWithContext(ctx context.Context, err error, code string) error {
+	return global.ErrorWithContext(ctx, err, code)
+}
+
+// Error wraps the incoming error with error defined by the Aloe specification according to the input code.
+// if no error is found in the specification, the original error is returned.
+func Error(err error, code string) error {
+	return global.Error(err, code)
+}
+
+// WrapperOption Functions //
+
+func Specification(source []byte) WrapperOption {
+	return func(o *wrapperOptions) {
+		o.source = source
+	}
+}
+
+func ManifestFilename(filename string) WrapperOption {
+	return func(o *wrapperOptions) {
+		o.sourceFilename = filename
+	}
+}
+
+func Logger(logger *log.Logger) WrapperOption {
+	return func(o *wrapperOptions) {
+		o.logger = logger
+	}
+}
+
+func ErrorParentPath(parentDir string) WrapperOption {
+	return func(o *wrapperOptions) {
+		o.errorDefinitionPath = parentDir
+	}
+}
+
+func DisableErrorURL() WrapperOption {
+	return func(o *wrapperOptions) {
+		o.showErrorURL = false
 	}
 }

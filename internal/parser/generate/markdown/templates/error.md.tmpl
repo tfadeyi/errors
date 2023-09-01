@@ -1,0 +1,20 @@
+---
+title: {{ .Title }}
+code: {{ .Code }}
+---
+
+## {{ .Title }}
+
+**Code**: {{ .Code }}
+
+### Summary
+
+{{ .Short }}
+
+{{if .Long}}
+
+### Detail Description
+
+{{ .Long }}
+
+{{ end }}

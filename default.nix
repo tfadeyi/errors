@@ -12,9 +12,9 @@
 }:
 
 pkgs.buildGoApplication {
-  pname = "go-aloe";
+  pname = "errctl";
   version = "0.0.1";
   pwd = ./.;
-  src = ./.;
+  src = ./cmd;
   modules = ./gomod2nix.toml;
 }

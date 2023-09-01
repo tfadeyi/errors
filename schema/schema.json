@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
-  "$ref": "#/definitions/Application",
-  "$id": "https://tfadeyi.github.io/schemas/v0.0.1/aloe.schema.json",
-  "title": "Aloe Specification",
-  "description": "The aloe specification",
+  "$ref": "#/definitions/Manifest",
+  "$id": "https://tfadeyi.github.io/schemas/v0.1.0/aloe.schema.json",
+  "title": "error.fyi specification",
+  "description": "The error.fyi specification",
   "definitions": {
-    "Application": {
+    "Manifest": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -17,7 +17,7 @@
         },
         "title": {
           "type": "string",
-          "description": "Display name of the application"
+          "description": "Display name of the manifest"
         },
         "base_url": {
           "type": "string",
@@ -28,7 +28,7 @@
           "format": "string"
         },
         "errors_definitions": {
-          "description": "List of application error definitions.",
+          "description": "List of the manifest's error definitions.",
           "$ref": "#/definitions/ErrorDefinitions"
         }
       },
@@ -37,7 +37,41 @@
         "version",
         "name"
       ],
-      "title": "Application"
+      "title": "Manifest"
+    },
+    "Solutions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Solution"
+      },
+      "required": [],
+      "title": "Solutions"
+    },
+    "Solution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "description": "Unique identifier of the error solution.",
+          "type": "string"
+        },
+        "title": {
+          "description": "Title of the solution's error.",
+          "type": "string"
+        },
+        "short": {
+          "short": "Short description of the solution.",
+          "type": "string"
+        },
+        "long": {
+          "short": "Long description of the solution.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "short"
+      ]
     },
     "ErrorDefinitions": {
       "type": "object",
@@ -61,14 +95,18 @@
           "type": "string",
           "maxLength": 40
         },
-        "summary": {
-          "description": "Short summary of the error. (max: 70 characters)",
+        "short": {
+          "description": "Short short of the error. (max: 70 characters)",
           "type": "string",
           "maxLength": 70
         },
-        "details": {
+        "long": {
           "description": "Detailed description of the error.",
           "type": "string"
+        },
+        "solutions" : {
+          "type": "object",
+          "$ref": "#/definitions/Solutions"
         },
         "meta": {
           "description": "Metadata information about the error.",
@@ -83,22 +121,17 @@
                 "path": {
                   "type": "string",
                   "description": "Full path of the error location"
-                },
-                "line": {
-                  "type": "integer",
-                  "description": "The line number of error location"
                 }
               },
               "required": [
-                "path",
-                "line"
+                "path"
               ]
             }
           }
         }
       },
       "required": [
-        "summary",
+        "short",
         "title",
         "code"
       ],

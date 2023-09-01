@@ -4,7 +4,7 @@ value = ""
 
 [devshell]
 name = "develpment-shell"
-motd = """{106}Go-Aloe Development Shell{reset}
+motd = """{106}Errors Development Shell{reset}
 Use CTRL-D to leave the shell
 """
 
