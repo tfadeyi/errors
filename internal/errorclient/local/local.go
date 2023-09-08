@@ -28,8 +28,8 @@ const (
 )
 
 func New(opts errorclient.Options) errorclient.Client {
-	if opts.ErrorDefinitionPath == "" {
-		opts.ErrorDefinitionPath = errorDefinitionPath
+	if opts.ErrorDefinitionURLPath == "" {
+		opts.ErrorDefinitionURLPath = errorDefinitionPath
 	}
 	return &Client{
 		Options: opts,
@@ -81,7 +81,7 @@ func (l *Client) GenerateErrorMessageFromCode(ctx context.Context, code string) 
 
 	result := fmt.Sprintf("* %s.", summary)
 	if l.ShowErrorURLs {
-		url := fmt.Sprintf("%s/%s/%s/%s", baseURL, name, l.ErrorDefinitionPath, code)
+		url := fmt.Sprintf("%s/%s/%s/%s", baseURL, name, l.ErrorDefinitionURLPath, code)
 		result = fmt.Sprintf("%s Additional information is available at %s", result, url)
 	}
 	return result, nil
