@@ -177,7 +177,7 @@ func (p *Parser) parseErrorAnnotations(filename string, comments ...*ast.Comment
 
 		for key, definition := range partialServiceSpec.ErrorsDefinitions {
 			definition.Meta = &api.ErrorMeta{Loc: &api.ErrorMetaLoc{
-				Path: filename,
+				Path: filepath.Base(filename),
 			}}
 			p.current.(*api.Manifest).ErrorsDefinitions[key] = definition
 		}

@@ -1,4 +1,4 @@
-//go:generate go run main.go generate --format markdown -o ../markdown --log-level none
+//go:generate go run main.go generate  -o errors.yaml --log-level none
 
 package main
 
@@ -17,19 +17,17 @@ import (
 //go:embed errors.yaml
 var defaultYAML []byte
 
-// We add annotations about the general info about the application like the name and title
-
-// @fyi name errors-cli-testing-example-1
+// @fyi name errctl
 // @fyi title error.fyi errctl CLI example
 // @fyi base_url https://tfadeyi.github.io
-// @fyi version v0.0.1-alpha.4
-// @fyi description helper CLI to aid the generation of application errors manifests
+// @fyi version v0.1.0
+// @fyi description CLI to aid the generation of application errors manifests
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
 	defer cancel()
 
-	fyi.SetSpecification(defaultYAML)
+	fyi.SetManifest(defaultYAML)
 	log := logging.NewStandardLogger()
 	ctx = logging.ContextWithLogger(ctx, log)
 
