@@ -1,11 +1,12 @@
 package grammar
 
 import (
-	participle "github.com/alecthomas/participle/v2"
-	"github.com/tfadeyi/errors/pkg/api"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/alecthomas/participle/v2"
+	api "github.com/tfadeyi/errors/pkg/api/v0.1.0"
 )
 
 type (

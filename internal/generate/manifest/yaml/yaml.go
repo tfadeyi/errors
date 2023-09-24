@@ -3,10 +3,13 @@ package yaml
 import (
 	"bytes"
 	"context"
-	"github.com/tfadeyi/errors/internal/logging"
-	"github.com/tfadeyi/errors/internal/parser/generate/helpers"
-	"gopkg.in/yaml.v3"
+	"github.com/juju/errors"
 	"io"
+
+	"github.com/tfadeyi/errors/internal/generate/helpers"
+	"github.com/tfadeyi/errors/internal/logging"
+	api "github.com/tfadeyi/errors/pkg/api/v0.1.0"
+	"gopkg.in/yaml.v3"
 )
 
 type Generator struct {
@@ -37,12 +40,19 @@ func New(opts *Options) *Generator {
 	}
 }
 
-func (g *Generator) Generate(ctx context.Context, specs map[string]any) error {
-	return writeYAMLSpecifications(g.writer, specs, g.output != "", g.output, g.header)
+func (g *Generator) GenerateManifests(ctx context.Context, specs map[string]api.Manifest) error {
+	return writeYAML(ctx, g.writer, specs, g.output != "", g.output, g.header)
 }
 
-func writeYAMLSpecifications(writer io.Writer, specs map[string]any, toFile bool, output, header string) error {
+func writeYAML(ctx context.Context, writer io.Writer, specs map[string]api.Manifest, toFile bool, output, header string) error {
 	for _, spec := range specs {
+		// handle signals with context
+		select {
+		case <-ctx.Done():
+			return errors.New("termination signal was received, terminating process...")
+		default:
+		}
+
 		var files = make(map[string][]byte)
 
 		body, err := yaml.Marshal(spec)

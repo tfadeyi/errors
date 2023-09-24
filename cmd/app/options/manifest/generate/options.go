@@ -1,6 +1,7 @@
-package spec
+package generate
 
 import (
+	"github.com/tfadeyi/errors/internal/generate/helpers"
 	"os"
 	"strings"
 
@@ -8,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	errhandler "github.com/tfadeyi/errors"
-	commonoptions "github.com/tfadeyi/errors/cmd/app/options/common"
-	"github.com/tfadeyi/errors/internal/parser/generate"
+	"github.com/tfadeyi/errors/cmd/app/options/manifest"
+	"github.com/tfadeyi/errors/internal/generate"
 	"github.com/tfadeyi/errors/internal/parser/language"
 )
 
@@ -17,19 +18,16 @@ type (
 	// Options is the list of options/flag available to the application,
 	// plus the clients needed by the application to function.
 	Options struct {
-		Format                 string
-		IncludedDirs           []string
-		OutputFileAndDirectory string
-		Source                 string
-		Language               string
-		ErrorTemplate          string
-		InfoTemplate           string
-		*commonoptions.Options
+		Format       string
+		IncludedDirs []string
+		Output       string
+		Language     string
+		*manifest.Options
 	}
 )
 
 // New creates a new instance of the application's options
-func New(common *commonoptions.Options) *Options {
+func New(common *manifest.Options) *Options {
 	opts := new(Options)
 	opts.Options = common
 	return opts
@@ -44,7 +42,7 @@ func (o *Options) Prepare(cmd *cobra.Command) *Options {
 // Complete initialises the components needed for the application to function given the options
 func (o *Options) Complete() error {
 	selectedFormat := strings.ToLower(strings.TrimSpace(o.Format))
-	if !generate.IsSupportedOutputFormat(selectedFormat) {
+	if !helpers.IsSupportedOutputFormat(selectedFormat) {
 		// @fyi.error code invalid_output_format
 		// @fyi.error title invalid_output_format
 		// @fyi.error short the output format passed to --format was invalid, valid: yaml, markdown
@@ -52,16 +50,16 @@ func (o *Options) Complete() error {
 	}
 
 	// Check if output is a directory and error if the format chosen is YAML
-	if file, err := os.Stat(o.OutputFileAndDirectory); !errors.Is(err, os.ErrNotExist) {
-		if file.IsDir() && o.Format == generate.Yaml {
-			// Here we add more specific info about the error they may encounter in this configuration
-
+	if file, err := os.Stat(o.Output); !errors.Is(err, os.ErrNotExist) {
+		if file.IsDir() {
 			// @fyi.error code invalid_yaml_output_file
 			// @fyi.error title invalid_yaml_output_file
 			// @fyi.error short the output file passed to the CLI is a directory not a file, please point a file
-			return errhandler.Error(errors.Errorf("output %q should be a file not a directory", o.OutputFileAndDirectory), "invalid_yaml_output_file")
+			return errhandler.Error(errors.Errorf("output %q should be a file not a directory", o.Output), "invalid_yaml_output_file")
 		}
 	}
+
+	// TODO check language
 
 	return nil
 }
@@ -89,18 +87,11 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 		"Output format (yaml,markdown)",
 	)
 	fs.StringVarP(
-		&o.OutputFileAndDirectory,
+		&o.Output,
 		"output",
 		"o",
 		"",
 		"Target output file or directory to store the generated output",
-	)
-	fs.StringVarP(
-		&o.Source,
-		"file",
-		"f",
-		"",
-		"Source code file to parse",
 	)
 	fs.StringVarP(
 		&o.Language,
@@ -108,17 +99,5 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 		"l",
 		language.Go,
 		"Target source code language",
-	)
-	fs.StringVar(
-		&o.ErrorTemplate,
-		"error-template",
-		"",
-		"Custom application error go-template filepath (markdown)",
-	)
-	fs.StringVar(
-		&o.InfoTemplate,
-		"info-template",
-		"",
-		"Custom application information go-template filepath (markdown)",
 	)
 }

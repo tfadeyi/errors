@@ -3,6 +3,7 @@ package parser
 import (
 	"context"
 	"github.com/juju/errors"
+	api "github.com/tfadeyi/errors/pkg/api/v0.1.0"
 
 	"github.com/tfadeyi/errors/internal/parser/options"
 )
@@ -17,8 +18,7 @@ type (
 )
 
 var (
-	ErrNoContentGenerator = errors.New("no target content generator was set")
-	ErrNoTargetLanguage   = errors.New("no target source language was set")
+	ErrNoTargetLanguage = errors.New("no target source language was set")
 )
 
 // New creates a new instance of the parser. See options.Option for more info on the available configuration.
@@ -34,17 +34,18 @@ func New(opts ...options.Option) *Parser {
 	return &Parser{defaultOpts}
 }
 
-// Parse parses the data source for the target annotations using the given parser configurations and returns a parsed specification.
-func (p *Parser) Parse(ctx context.Context) (map[string]any, error) {
+// ParseSource parses the data source for the target annotations using the given parser configurations and returns a parsed specification.
+func (p *Parser) ParseSource(ctx context.Context) (map[string]api.Manifest, error) {
 	if p.Opts.TargetLanguage == nil {
 		return nil, ErrNoTargetLanguage
 	}
-	return p.Opts.TargetLanguage.Parse(ctx)
+	return p.Opts.TargetLanguage.ParseSource(ctx)
 }
 
-func (p *Parser) Generate(ctx context.Context, specs map[string]any) error {
-	if p.Opts.TargetGenerator == nil {
-		return ErrNoContentGenerator
+// AnnotateErrors parses the data source for error declarations using the given parser configurations and returns them.
+func (p *Parser) AnnotateErrors(ctx context.Context, wrapErrors bool) error {
+	if p.Opts.TargetLanguage == nil {
+		return ErrNoTargetLanguage
 	}
-	return p.Opts.TargetGenerator.Generate(ctx, specs)
+	return p.Opts.TargetLanguage.AnnotateErrors(ctx, wrapErrors)
 }

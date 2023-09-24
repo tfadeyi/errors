@@ -68,7 +68,10 @@ func Execute(ctx context.Context) {
 func init() {
 	opts := commonoptions.New()
 	rootCmd = cmd(opts)
-	rootCmd.AddCommand(specGenerateCmd(opts))
-	rootCmd.AddCommand(specValidateCmd(opts))
+
+	rootCmd.AddCommand(manifestCmd(opts))
+	rootCmd.AddCommand(initCmd(opts))
+	rootCmd.AddCommand(annotateCmd(opts))
 	rootCmd.AddCommand(versionCmd(opts))
+	rootCmd.AddCommand(docsCmd(opts))
 }

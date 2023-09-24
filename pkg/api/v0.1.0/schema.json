@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
   "$ref": "#/definitions/Manifest",
-  "$id": "https://tfadeyi.github.io/schemas/v0.1.0/aloe.schema.json",
+  "$id": "https://tfadeyi.github.io/schemas/v0.1.0/manifest.schema.json",
   "title": "error.fyi specification",
   "description": "The error.fyi specification",
   "definitions": {
@@ -118,13 +118,18 @@
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "path": {
+                "filename": {
                   "type": "string",
-                  "description": "Full path of the error location"
+                  "description": "Filename of the file where the error was found"
+                },
+                "line": {
+                  "type": "integer",
+                  "description": "Line number where the error was defined"
                 }
               },
               "required": [
-                "path"
+                "filename",
+                "line"
               ]
             }
           }

@@ -1,5 +1,4 @@
-//go:generate go run main.go generate  -o errors.yaml --log-level none
-
+//go:generate go run main.go manifest create -o errors.yaml --log-level none
 package main
 
 import (

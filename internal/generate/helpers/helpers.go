@@ -1,9 +1,11 @@
 package helpers
 
 import (
+	"github.com/tfadeyi/errors/internal/generate"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/juju/errors"
 )
@@ -51,4 +53,14 @@ func WriteToFile(files map[string][]byte) error {
 		}
 	}
 	return nil
+}
+
+// IsSupportedOutputFormat checks if the given output format is a supported one
+func IsSupportedOutputFormat(format string) bool {
+	format = strings.ToLower(strings.TrimSpace(format))
+	switch format {
+	case generate.Yaml, generate.Markdown:
+		return true
+	}
+	return false
 }

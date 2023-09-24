@@ -46,7 +46,7 @@ context and link to the error documentation.
 
 ---
 
-> **Note**
+> **Warning**
 > The project is not yet production ready.
 
 ## About The Project

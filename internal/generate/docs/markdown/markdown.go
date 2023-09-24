@@ -5,15 +5,15 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/microcosm-cc/bluemonday"
-	"github.com/tfadeyi/errors/internal/parser/generate/helpers"
+	"github.com/tfadeyi/errors/internal/generate/helpers"
 	"io"
 	"path/filepath"
 	"text/template"
 
 	"github.com/juju/errors"
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/tfadeyi/errors/internal/logging"
-	"github.com/tfadeyi/errors/pkg/api"
+	api "github.com/tfadeyi/errors/pkg/api/v0.1.0"
 )
 
 //go:embed templates/error.md.tmpl
@@ -52,57 +52,47 @@ func New(opts *Options) *Generator {
 	}
 }
 
-func (g *Generator) Generate(ctx context.Context, specs map[string]any) error {
-	return writeMarkdownSpecifications(g.writer, specs, g.output != "", g.output, g.infoTmplFile, g.errorTmplFile)
+func (g *Generator) GenerateDocumentation(ctx context.Context, manifest *api.Manifest) error {
+	return writeMarkdownSpecifications(ctx, manifest, g.output, g.infoTmplFile, g.errorTmplFile)
 }
 
-func writeMarkdownSpecifications(writer io.Writer, specs map[string]any, toFile bool, outputDirectory string, infoTmpl, errorTmpl string) error {
-	for _, spec := range specs {
-		foundSpec, ok := spec.(*api.Manifest)
-		if !ok {
-			return errors.New("found invalid application errors manifest")
-		}
+func writeMarkdownSpecifications(ctx context.Context, manifest *api.Manifest, outputDirectory string, infoTmpl, errorTmpl string) error {
+	if manifest == nil {
+		return errors.New("invalid application errors manifest")
+	}
 
-		var files map[string][]byte
-		var err error
+	var files map[string][]byte
+	var err error
 
-		if infoTmpl != "" && errorTmpl != "" {
-			files, err = generateMarkdownWithCustomTemplates(foundSpec, outputDirectory, infoTmpl, errorTmpl)
-			if err != nil {
-				return err
-			}
-		} else {
-			files, err = generateMarkdown(foundSpec, outputDirectory)
-			if err != nil {
-				return err
-			}
-		}
-
-		if toFile {
-			if err := helpers.WriteToFile(files); err != nil {
-				return err
-			}
-			continue
-		}
-
-		if err := helpers.Write(writer, files); err != nil {
+	if infoTmpl != "" && errorTmpl != "" {
+		files, err = generateMarkdownWithCustomTemplates(ctx, manifest, outputDirectory, infoTmpl, errorTmpl)
+		if err != nil {
 			return err
 		}
+	} else {
+		files, err = generateMarkdown(ctx, manifest, outputDirectory)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := helpers.WriteToFile(files); err != nil {
+		return err
 	}
 
 	return nil
 }
 
-func generateMarkdown(spec *api.Manifest, outputDir string) (map[string][]byte, error) {
+func generateMarkdown(ctx context.Context, manifest *api.Manifest, outputDir string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	root := filepath.Join(outputDir, "index.md")
 	// parse application general information
-	tmpl, err := template.New(spec.Name).Parse(applicationInfoMarkdownTmpl)
+	tmpl, err := template.New(manifest.Name).Parse(applicationInfoMarkdownTmpl)
 	if err != nil {
 		return nil, err
 	}
 	buf := bytes.NewBuffer([]byte{})
-	err = tmpl.Execute(buf, spec)
+	err = tmpl.Execute(buf, manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +100,14 @@ func generateMarkdown(spec *api.Manifest, outputDir string) (map[string][]byte, 
 		files[root] = bluemonday.UGCPolicy().SanitizeBytes(buf.Bytes())
 	}
 
-	for code, def := range spec.ErrorsDefinitions {
+	for code, def := range manifest.ErrorsDefinitions {
+		// handle signals with context
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("termination signal was received, terminating process...")
+		default:
+		}
+
 		tmpl, err := template.New(code).Parse(errorDefinitionMarkdownTmpl)
 		if err != nil {
 			return nil, err
@@ -128,16 +125,16 @@ func generateMarkdown(spec *api.Manifest, outputDir string) (map[string][]byte, 
 	return files, nil
 }
 
-func generateMarkdownWithCustomTemplates(spec *api.Manifest, outputDir string, infoTmplFile, errorTmplFile string) (map[string][]byte, error) {
+func generateMarkdownWithCustomTemplates(ctx context.Context, manifest *api.Manifest, outputDir string, infoTmplFile, errorTmplFile string) (map[string][]byte, error) {
 	files := make(map[string][]byte)
 	root := filepath.Join(outputDir, "index.md")
 	// parse application general information
-	tmpl, err := template.New(spec.Name).ParseFiles(infoTmplFile)
+	tmpl, err := template.New(manifest.Name).ParseFiles(infoTmplFile)
 	if err != nil {
 		return nil, err
 	}
 	buf := bytes.NewBuffer([]byte{})
-	err = tmpl.Execute(buf, spec)
+	err = tmpl.Execute(buf, manifest)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +142,13 @@ func generateMarkdownWithCustomTemplates(spec *api.Manifest, outputDir string, i
 		files[root] = bluemonday.UGCPolicy().SanitizeBytes(buf.Bytes())
 	}
 
-	for code, def := range spec.ErrorsDefinitions {
+	for code, def := range manifest.ErrorsDefinitions {
+		// handle signals with context
+		select {
+		case <-ctx.Done():
+			return nil, errors.New("termination signal was received, terminating process...")
+		default:
+		}
 		tmpl, err := template.New(code).ParseFiles(errorTmplFile)
 		if err != nil {
 			return nil, err

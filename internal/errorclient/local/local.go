@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/tfadeyi/errors/internal/errorclient"
-	"github.com/tfadeyi/errors/pkg/api"
+	api "github.com/tfadeyi/errors/pkg/api/v0.1.0"
 	"gopkg.in/yaml.v3"
 )
 
