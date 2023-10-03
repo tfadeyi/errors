@@ -37,7 +37,7 @@ type (
 // Logger configure the parser's logger
 func Logger(logger *logging.Logger) Option {
 	return func(e *Options) {
-		log := logger.WithName("parser")
+		log := logger.WithName("printer")
 		e.Logger = &log
 	}
 }
@@ -75,5 +75,3 @@ func Writer(w io.Writer) Option {
 		e.Writer = w
 	}
 }
-
-// Custom configurations

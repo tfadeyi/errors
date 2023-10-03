@@ -1,9 +1,11 @@
 package manifest
 
 import (
+	"github.com/juju/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	commonoptions "github.com/tfadeyi/errors/cmd/app/options/common"
+	"os"
 )
 
 type (
@@ -11,6 +13,7 @@ type (
 	// plus the clients needed by the application to function.
 	Options struct {
 		Source string
+		Strict bool
 		*commonoptions.Options
 	}
 )
@@ -30,6 +33,11 @@ func (o *Options) Prepare(cmd *cobra.Command) *Options {
 
 // Complete initialises the components needed for the application to function given the options
 func (o *Options) Complete() error {
+	_, err := os.Stat(o.Source)
+	if errors.Is(err, os.ErrNotExist) {
+		// TODO write better error
+		return errors.New("source file is missing")
+	}
 	return nil
 }
 
@@ -40,5 +48,11 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 		"f",
 		"",
 		"Application error manifest to parse",
+	)
+	fs.BoolVar(
+		&o.Strict,
+		"strict",
+		false,
+		"Set the parser to strict mode",
 	)
 }

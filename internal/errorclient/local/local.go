@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/tfadeyi/errors/internal/errorclient"
 	api "github.com/tfadeyi/errors/pkg/api/v0.1.0"
 	"gopkg.in/yaml.v3"
@@ -75,14 +76,100 @@ func (l *Client) GenerateErrorMessageFromCode(ctx context.Context, code string) 
 		return "", errors.New("no error was not found in the error specification file")
 	}
 
-	name := strings.TrimSpace(l.Spec.Name)
-	baseURL := strings.TrimSpace(l.Spec.BaseUrl)
-	summary := strings.TrimSpace(v.Short)
-
-	result := fmt.Sprintf("* %s.", summary)
-	if l.ShowErrorURLs {
-		url := fmt.Sprintf("%s/%s/%s/%s", baseURL, name, l.ErrorDefinitionURLPath, code)
-		result = fmt.Sprintf("%s Additional information is available at %s", result, url)
+	if l.ShowMarkdownErrors {
+		return l.printMarkdownError(v)
 	}
-	return result, nil
+
+	return l.printTextError(v)
+}
+
+func (l *Client) printTextError(er api.Error) (string, error) {
+	var content strings.Builder
+	var url = fmt.Sprintf("%s/%s/%s/%s", l.Spec.BaseUrl, l.Spec.Name, l.ErrorDefinitionURLPath, er.Code)
+
+	if er.Title != "" {
+		if _, err := content.WriteString(fmt.Sprintf("%s\n", er.Title)); err != nil {
+			return "", err
+		}
+	}
+
+	if er.Short != "" {
+		if _, err := content.WriteString("What caused the error\n"); err != nil {
+			return "", err
+		}
+		if _, err := content.WriteString(strings.TrimSpace(er.Short)); err != nil {
+			return "", err
+		}
+		if _, err := content.WriteString("\n"); err != nil {
+			return "", err
+		}
+	}
+	if len(er.Suggestions) > 0 && l.NumberOfSuggestions > 0 {
+		if _, err := content.WriteString("Quick Solutions\n"); err != nil {
+			return "", err
+		}
+		if _, err := content.WriteString(fmt.Sprintf("Additional information is available at: %s\n", url)); err != nil {
+			return "", err
+		}
+		count := 0
+		for _, suggestion := range er.Suggestions {
+			if count == l.NumberOfSuggestions {
+				break
+			}
+			if suggestion.Short == "" {
+				continue
+			}
+			if _, err := content.WriteString(fmt.Sprintf("* Suggestion: %s\n", suggestion.Short)); err != nil {
+				return "", err
+			}
+		}
+	}
+
+	return content.String(), nil
+}
+
+func (l *Client) printMarkdownError(er api.Error) (string, error) {
+	var content strings.Builder
+	var url = fmt.Sprintf("%s/%s/%s/%s", l.Spec.BaseUrl, l.Spec.Name, l.ErrorDefinitionURLPath, er.Code)
+
+	if er.Title != "" {
+		if _, err := content.WriteString(fmt.Sprintf("# %s\n", strings.ToTitle(er.Title))); err != nil {
+			return "", err
+		}
+	}
+
+	if er.Short != "" {
+		if _, err := content.WriteString("## What caused the error\n"); err != nil {
+			return "", err
+		}
+		if _, err := content.WriteString(strings.TrimSpace(er.Short)); err != nil {
+			return "", err
+		}
+		if _, err := content.WriteString("\n"); err != nil {
+			return "", err
+		}
+	}
+	if len(er.Suggestions) > 0 && l.NumberOfSuggestions > 0 {
+		if _, err := content.WriteString("## Quick Solutions\n"); err != nil {
+			return "", err
+		}
+
+		if _, err := content.WriteString(fmt.Sprintf("> Additional information is available at: %s\n", url)); err != nil {
+			return "", err
+		}
+
+		count := 0
+		for _, suggestion := range er.Suggestions {
+			if count == l.NumberOfSuggestions {
+				break
+			}
+			if suggestion.Short == "" {
+				continue
+			}
+			if _, err := content.WriteString(fmt.Sprintf("* **Suggestion**: %s\n", suggestion.Short)); err != nil {
+				return "", err
+			}
+		}
+	}
+	return glamour.Render(content.String(), "dark")
 }

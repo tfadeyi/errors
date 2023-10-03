@@ -120,11 +120,11 @@ Add in-code annotations for the errors the application's users might see.
 ```
 
 ```shell
-errctl generate --format yaml -o error.yaml # will generate the application error manifest
+fyictl generate --format yaml -o error.yaml # will generate the application error manifest
 ```
 
 ```shell
-errctl generate --format markdown -o ./docs # will generate the error markdown docs
+fyictl generate --format markdown -o ./docs # will generate the error markdown docs
 ```
 
 Now whenever an error is thrown the application will now add the additional context described in the in-code annotations:
@@ -141,7 +141,7 @@ for additional info check https://github.com/tfadeyi/my-app/example/error_someth
 
 ```text
 Usage:
-  errctl generate [flags]
+  fyictl generate [flags]
 
 Flags:
       --error-template string   
@@ -178,10 +178,10 @@ Global Flags:
 <details>
 <summary>Linux</summary>
 
-> The recommended way to install error.fyi CLI (errctl) is via the installation script:
+> The recommended way to install error.fyi CLI (fyictl) is via the installation script:
 
 > ```sh
-> curl -sfL https://raw.githubusercontent.com/slosive/sloscribe/main/install.sh | sh -
+> curl -sfL https://raw.githubusercontent.com/tfadeyi/errors/main/install.sh | sh -
 > ```
 
 </details>
@@ -189,10 +189,10 @@ Global Flags:
 <details>
 <summary>MacOS</summary>
 
-> The recommended way to install error.fyi CLI (errctl) is via the installation script:
+> The recommended way to install error.fyi CLI (fyictl) is via the installation script:
 
 > ```sh
-> curl -sfL https://raw.githubusercontent.com/slosive/sloscribe/main/install.sh | sh -
+> curl -sfL https://raw.githubusercontent.com/tfadeyi/errors/main/install.sh | sh -
 > ```
 
 </details>

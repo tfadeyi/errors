@@ -17,7 +17,9 @@ type (
 		Source []byte
 		// ErrorDefinitionURLPath is the parent URL path where the errors will be available
 		ErrorDefinitionURLPath string
-		// ShowErrorURLs enables and disables the errors' URL being shown when the error is returned
-		ShowErrorURLs bool
+		// ShowMarkdownErrors enables or disables the error's pretty view being shown at error return time
+		ShowMarkdownErrors bool
+		// NumberOfSuggestions number of suggestions shown in the error context
+		NumberOfSuggestions int
 	}
 )

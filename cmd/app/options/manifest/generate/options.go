@@ -22,6 +22,7 @@ type (
 		IncludedDirs []string
 		Output       string
 		Language     string
+		Recursive    bool
 		*manifest.Options
 	}
 )
@@ -92,6 +93,13 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 		"o",
 		"",
 		"Target output file or directory to store the generated output",
+	)
+	fs.BoolVarP(
+		&o.Recursive,
+		"recursive",
+		"r",
+		true,
+		"Recursively parses the target directories",
 	)
 	fs.StringVarP(
 		&o.Language,

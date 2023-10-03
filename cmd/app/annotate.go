@@ -8,18 +8,19 @@ import (
 	"github.com/tfadeyi/errors/internal/logging"
 	"github.com/tfadeyi/errors/internal/parser"
 	"github.com/tfadeyi/errors/internal/parser/language"
-	"github.com/tfadeyi/errors/internal/parser/options"
 )
 
 func annotateCmd(common *commonoptions.Options) *cobra.Command {
 	opts := annotateoptions.New(common)
+
 	cmd := &cobra.Command{
-		Use:   "annotate",
-		Short: "Annotates the target file with error.fyi comments",
-		Long:  ``,
+		Use:          "annotate",
+		Short:        "Annotates the target file with error.fyi comments",
+		Long:         ``,
+		SilenceUsage: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			logger := logging.LoggerFromContext(cmd.Context())
-			logger = logger.WithName("init")
+			logger = logger.WithName("annotate")
 
 			if err := opts.Complete(); err != nil {
 				return err
@@ -31,16 +32,15 @@ func annotateCmd(common *commonoptions.Options) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger := logging.LoggerFromContext(cmd.Context())
 
-			logger.Info("Annotating target file")
+			logger.Info("Annotating target file", "file", opts.Source)
 
-			parserOptions := []options.Option{
-				options.Logger(&logger),
-				options.SourceFile(opts.Source),
+			parserOptions := []parser.Option{
+				parser.Logger(&logger),
 			}
 
 			switch opts.Language {
 			case language.Go:
-				parserOptions = append(parserOptions, options.Go())
+				parserOptions = append(parserOptions, parser.Go(cmd.Context()))
 			default:
 				// do nothing
 			}
@@ -55,13 +55,13 @@ func annotateCmd(common *commonoptions.Options) *cobra.Command {
 			)
 
 			logger.Info("Annotating file...")
-			err := p.AnnotateErrors(cmd.Context(), opts.WrapErrors)
+			err := p.AnnotateSourceErrors(cmd.Context(), opts.Source, opts.WrapErrors, opts.AnnotateOnlyTodos)
 			if err != nil {
 				return errors.Annotate(err, "failed to annotate the application")
 			}
 			logger.Info("Done ✅")
 
-			logger.Info("Annotations were successfully added ✅")
+			logger.Info("@fyi annotations were successfully added!")
 			logger.Info("Check the updated file", "file", opts.Source)
 
 			return nil

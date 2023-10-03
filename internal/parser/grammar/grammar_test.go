@@ -93,34 +93,31 @@ func TestGrammar(t *testing.T) {
 		app, err := Eval(`@fyi.error code validate_not_implemented
 @fyi.error long specification validate command has not been implemented yet, will be implemented shortly
 @fyi.error short spec validate command has not been implemented yet
-@fyi.error.solution code try_again
-@fyi.error.solution short Please try running the command again`)
+@fyi.error.suggestion short Please try running the command again`)
 		require.NoError(t, err)
 		require.Len(t, app.ErrorsDefinitions, 1)
 		assert.EqualValues(t, "validate_not_implemented", app.ErrorsDefinitions["validate_not_implemented"].Code)
 		assert.EqualValues(t, "specification validate command has not been implemented yet, will be implemented shortly", *app.ErrorsDefinitions["validate_not_implemented"].Long)
 		assert.EqualValues(t, "spec validate command has not been implemented yet", app.ErrorsDefinitions["validate_not_implemented"].Short)
-		require.Len(t, app.ErrorsDefinitions["validate_not_implemented"].Solutions, 1)
-		assert.EqualValues(t, "try_again", app.ErrorsDefinitions["validate_not_implemented"].Solutions["try_again"].Code)
-		assert.EqualValues(t, "Please try running the command again", app.ErrorsDefinitions["validate_not_implemented"].Solutions["try_again"].Short)
+		require.Len(t, app.ErrorsDefinitions["validate_not_implemented"].Suggestions, 1)
+		assert.EqualValues(t, "1", app.ErrorsDefinitions["validate_not_implemented"].Suggestions["1"].Id)
+		assert.EqualValues(t, "Please try running the command again", app.ErrorsDefinitions["validate_not_implemented"].Suggestions["1"].Short)
 	})
 	t.Run("Successfully parse application information and 1 error definition with 2 solution", func(t *testing.T) {
 		app, err := Eval(`@fyi.error code validate_not_implemented
 @fyi.error long specification validate command has not been implemented yet, will be implemented shortly
 @fyi.error short spec validate command has not been implemented yet
-@fyi.error.solution code try_again
-@fyi.error.solution short Please try running the command again
-@fyi.error.solution code restart_machine
-@fyi.error.solution short Restart machine`)
+@fyi.error.suggestion short Please try running the command again
+@fyi.error.suggestion short Restart machine`)
 		require.NoError(t, err)
 		require.Len(t, app.ErrorsDefinitions, 1)
 		assert.EqualValues(t, "validate_not_implemented", app.ErrorsDefinitions["validate_not_implemented"].Code)
 		assert.EqualValues(t, "specification validate command has not been implemented yet, will be implemented shortly", *app.ErrorsDefinitions["validate_not_implemented"].Long)
 		assert.EqualValues(t, "spec validate command has not been implemented yet", app.ErrorsDefinitions["validate_not_implemented"].Short)
-		require.Len(t, app.ErrorsDefinitions["validate_not_implemented"].Solutions, 2)
-		assert.EqualValues(t, "try_again", app.ErrorsDefinitions["validate_not_implemented"].Solutions["try_again"].Code)
-		assert.EqualValues(t, "Please try running the command again", app.ErrorsDefinitions["validate_not_implemented"].Solutions["try_again"].Short)
-		assert.EqualValues(t, "restart_machine", app.ErrorsDefinitions["validate_not_implemented"].Solutions["restart_machine"].Code)
-		assert.EqualValues(t, "Restart machine", app.ErrorsDefinitions["validate_not_implemented"].Solutions["restart_machine"].Short)
+		require.Len(t, app.ErrorsDefinitions["validate_not_implemented"].Suggestions, 2)
+		assert.EqualValues(t, "1", app.ErrorsDefinitions["validate_not_implemented"].Suggestions["1"].Id)
+		assert.EqualValues(t, "Please try running the command again", app.ErrorsDefinitions["validate_not_implemented"].Suggestions["1"].Short)
+		assert.EqualValues(t, "2", app.ErrorsDefinitions["validate_not_implemented"].Suggestions["2"].Id)
+		assert.EqualValues(t, "Restart machine", app.ErrorsDefinitions["validate_not_implemented"].Suggestions["2"].Short)
 	})
 }

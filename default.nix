@@ -12,8 +12,8 @@
 }:
 
 pkgs.buildGoApplication {
-  pname = "errctl";
-  version = "0.0.1";
+  pname = "fyictl";
+  version = "0.1.0";
   pwd = ./.;
   src = ./cmd;
   modules = ./gomod2nix.toml;

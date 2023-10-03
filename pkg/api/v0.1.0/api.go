@@ -4,76 +4,7 @@ package v0_1_0
 
 import "encoding/json"
 import "fmt"
-
-type ErrorMetaLoc struct {
-	// Filename of the file where the error was found
-	Filename string `json:"filename" yaml:"filename" mapstructure:"filename"`
-
-	// Line number where the error was defined
-	Line int `json:"line" yaml:"line" mapstructure:"line"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *ErrorMetaLoc) UnmarshalJSON(b []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-	if v, ok := raw["filename"]; !ok || v == nil {
-		return fmt.Errorf("field filename in ErrorMetaLoc: required")
-	}
-	if v, ok := raw["line"]; !ok || v == nil {
-		return fmt.Errorf("field line in ErrorMetaLoc: required")
-	}
-	type Plain ErrorMetaLoc
-	var plain Plain
-	if err := json.Unmarshal(b, &plain); err != nil {
-		return err
-	}
-	*j = ErrorMetaLoc(plain)
-	return nil
-}
-
-// Metadata information about the error.
-type ErrorMeta struct {
-	// Loc corresponds to the JSON schema field "loc".
-	Loc *ErrorMetaLoc `json:"loc,omitempty" yaml:"loc,omitempty" mapstructure:"loc,omitempty"`
-}
-
-type Solution struct {
-	// Unique identifier of the error solution.
-	Code string `json:"code" yaml:"code" mapstructure:"code"`
-
-	// Long corresponds to the JSON schema field "long".
-	Long *string `json:"long,omitempty" yaml:"long,omitempty" mapstructure:"long,omitempty"`
-
-	// Short corresponds to the JSON schema field "short".
-	Short string `json:"short" yaml:"short" mapstructure:"short"`
-
-	// Title of the solution's error.
-	Title *string `json:"title,omitempty" yaml:"title,omitempty" mapstructure:"title,omitempty"`
-}
-
-// UnmarshalJSON implements json.Unmarshaler.
-func (j *Solution) UnmarshalJSON(b []byte) error {
-	var raw map[string]interface{}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-	if v, ok := raw["code"]; !ok || v == nil {
-		return fmt.Errorf("field code in Solution: required")
-	}
-	if v, ok := raw["short"]; !ok || v == nil {
-		return fmt.Errorf("field short in Solution: required")
-	}
-	type Plain Solution
-	var plain Plain
-	if err := json.Unmarshal(b, &plain); err != nil {
-		return err
-	}
-	*j = Solution(plain)
-	return nil
-}
+import "reflect"
 
 type Error struct {
 	// Unique code of the error. (max: 40 characters)
@@ -85,17 +16,106 @@ type Error struct {
 	// Metadata information about the error.
 	Meta *ErrorMeta `json:"meta,omitempty" yaml:"meta,omitempty" mapstructure:"meta,omitempty"`
 
+	// Severity corresponds to the JSON schema field "severity".
+	Severity *ErrorSeverity `json:"severity,omitempty" yaml:"severity,omitempty" mapstructure:"severity,omitempty"`
+
 	// Short short of the error. (max: 70 characters)
 	Short string `json:"short" yaml:"short" mapstructure:"short"`
 
-	// Solutions corresponds to the JSON schema field "solutions".
-	Solutions Solutions `json:"solutions,omitempty" yaml:"solutions,omitempty" mapstructure:"solutions,omitempty"`
+	// Suggestions corresponds to the JSON schema field "suggestions".
+	Suggestions Suggestions `json:"suggestions,omitempty" yaml:"suggestions,omitempty" mapstructure:"suggestions,omitempty"`
 
 	// Name of the error, to be displayed. (max: 40 characters)
 	Title string `json:"title" yaml:"title" mapstructure:"title"`
 }
 
-type Solutions map[string]Solution
+type ErrorDefinitions map[string]Error
+
+// Metadata information about the error.
+type ErrorMeta struct {
+	// Loc corresponds to the JSON schema field "loc".
+	Loc *ErrorMetaLoc `json:"loc,omitempty" yaml:"loc,omitempty" mapstructure:"loc,omitempty"`
+}
+
+type ErrorMetaLoc struct {
+	// Filename of the file where the error was found
+	Filename string `json:"filename" yaml:"filename" mapstructure:"filename"`
+
+	// Line number where the error was defined
+	Line int `json:"line" yaml:"line" mapstructure:"line"`
+}
+
+type ErrorSeverity string
+
+const ErrorSeverityLow ErrorSeverity = "low"
+const ErrorSeverityMedium ErrorSeverity = "medium"
+const ErrorSeveritySevere ErrorSeverity = "severe"
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ErrorSeverity) UnmarshalJSON(b []byte) error {
+	var v string
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	var ok bool
+	for _, expected := range enumValues_ErrorSeverity {
+		if reflect.DeepEqual(v, expected) {
+			ok = true
+			break
+		}
+	}
+	if !ok {
+		return fmt.Errorf("invalid value (expected one of %#v): %#v", enumValues_ErrorSeverity, v)
+	}
+	*j = ErrorSeverity(v)
+	return nil
+}
+
+type Suggestion struct {
+	// Reference to the document .
+	DocRef *string `json:"docRef,omitempty" yaml:"docRef,omitempty" mapstructure:"docRef,omitempty"`
+
+	// Error referenced by the suggestion.
+	ErrorCode string `json:"error_code" yaml:"error_code" mapstructure:"error_code"`
+
+	// Unique identifier of the suggestion.
+	Id string `json:"id" yaml:"id" mapstructure:"id"`
+
+	// Short description of the solution.
+	Short string `json:"short" yaml:"short" mapstructure:"short"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *Suggestion) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if v, ok := raw["error_code"]; !ok || v == nil {
+		return fmt.Errorf("field error_code in Suggestion: required")
+	}
+	if v, ok := raw["id"]; !ok || v == nil {
+		return fmt.Errorf("field id in Suggestion: required")
+	}
+	if v, ok := raw["short"]; !ok || v == nil {
+		return fmt.Errorf("field short in Suggestion: required")
+	}
+	type Plain Suggestion
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = Suggestion(plain)
+	return nil
+}
+
+type Suggestions map[string]Suggestion
+
+var enumValues_ErrorSeverity = []interface{}{
+	"severe",
+	"medium",
+	"low",
+}
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (j *Error) UnmarshalJSON(b []byte) error {
@@ -121,7 +141,26 @@ func (j *Error) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type ErrorDefinitions map[string]Error
+// UnmarshalJSON implements json.Unmarshaler.
+func (j *ErrorMetaLoc) UnmarshalJSON(b []byte) error {
+	var raw map[string]interface{}
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if v, ok := raw["filename"]; !ok || v == nil {
+		return fmt.Errorf("field filename in ErrorMetaLoc: required")
+	}
+	if v, ok := raw["line"]; !ok || v == nil {
+		return fmt.Errorf("field line in ErrorMetaLoc: required")
+	}
+	type Plain ErrorMetaLoc
+	var plain Plain
+	if err := json.Unmarshal(b, &plain); err != nil {
+		return err
+	}
+	*j = ErrorMetaLoc(plain)
+	return nil
+}
 
 type Manifest struct {
 	// BaseUrl corresponds to the JSON schema field "base_url".

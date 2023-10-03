@@ -40,12 +40,12 @@ func New(opts *Options) *Generator {
 	}
 }
 
-func (g *Generator) GenerateManifests(ctx context.Context, specs map[string]api.Manifest) error {
-	return writeYAML(ctx, g.writer, specs, g.output != "", g.output, g.header)
+func (g *Generator) GenerateManifests(ctx context.Context, manifests ...*api.Manifest) error {
+	return writeYAML(ctx, g.writer, g.output != "", g.output, g.header, manifests...)
 }
 
-func writeYAML(ctx context.Context, writer io.Writer, specs map[string]api.Manifest, toFile bool, output, header string) error {
-	for _, spec := range specs {
+func writeYAML(ctx context.Context, writer io.Writer, toFile bool, output, header string, manifests ...*api.Manifest) error {
+	for _, spec := range manifests {
 		// handle signals with context
 		select {
 		case <-ctx.Done():

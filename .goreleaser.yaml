@@ -1,7 +1,5 @@
 project_name: errors
-before:
-  hooks:
-    - go mod tidy
+
 builds:
   - id: "linux"
     env:
@@ -11,7 +9,7 @@ builds:
       - -trimpath
     ldflags:
       - '-s -w -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Platform=linux/unknown" -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Version={{ .Version }}" -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Commit={{ .Commit }}" -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Date={{ .Date }}"'
-    binary: "errctl"
+    binary: "fyictl"
     goos:
       - linux
     goarch:
@@ -26,7 +24,7 @@ builds:
       - -trimpath
     ldflags:
       - '-s -w -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Platform=darwin/unknown" -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Version={{ .Version }}" -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Commit={{ .Commit }}" -X "github.com/tfadeyi/{{ .ProjectName }}/internal/version.Date={{ .Date }}"'
-    binary: "errctl"
+    binary: "fyictl"
     goos:
       - darwin
     goarch:
@@ -35,13 +33,13 @@ builds:
 archives:
   - id: linux
     format: tar.gz
-    name_template: "errctl-{{ .Os }}-{{ .Arch }}"
+    name_template: "fyictl-{{ .Os }}-{{ .Arch }}"
     wrap_in_directory: true
     builds:
       - "linux"
   - id: darwin
     format: tar.gz
-    name_template: "errctl-{{ .Os }}-{{ .Arch }}"
+    name_template: "fyictl-{{ .Os }}-{{ .Arch }}"
     wrap_in_directory: true
     builds:
       - "darwin"
@@ -54,9 +52,9 @@ kos:
     # labels are going to be supported in goreleaser 1.16.3, waiting for the release
     labels:
       org.opencontainers.image.source: https://github.com/tfadeyi/errors
-      org.opencontainers.image.description: "errctl is a CLI utility for generating an application error specification"
+      org.opencontainers.image.description: "fyictl is a CLI utility for generating an application error manifest"
       org.opencontainers.image.licenses: MIT
-      org.opencontainers.image.title: "errctl"
+      org.opencontainers.image.title: "fyictl"
       org.opencontainers.image.vendor: ""
       org.opencontainers.image.authors: "Oluwole Fadeyi"
 
@@ -72,7 +70,7 @@ kos:
     base_import_paths: true
 
 checksum:
-  name_template: "errctl-SHA256SUMS"
+  name_template: "fyictl-SHA256SUMS"
   algorithm: sha256
 release:
   draft: true
@@ -88,13 +86,3 @@ signs:
       - "--output-signature=${signature}"
       - "--yes" # needed on cosign 2.0.0+
     artifacts: checksum
-
-# the image signing doesn't seem to work when using ku to build the image
-#docker_signs:
-#  - cmd: cosign
-#    args:
-#      - "sign"
-#      - "ghcr.io/tfadeyi/auth0-simple-exporter@${digest}"
-#      - "--yes"
-#    artifacts: all
-#    output: true

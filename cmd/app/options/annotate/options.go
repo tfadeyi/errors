@@ -15,10 +15,11 @@ type (
 	// Options is the list of options/flag available to the application,
 	// plus the clients needed by the application to function.
 	Options struct {
-		IncludedDirs []string
-		Source       string
-		Language     string
-		WrapErrors   bool
+		IncludedDirs      []string
+		Source            string
+		Language          string
+		WrapErrors        bool
+		AnnotateOnlyTodos bool
 		*commonoptions.Options
 	}
 )
@@ -44,15 +45,18 @@ func (o *Options) Complete() error {
 		// @fyi.error code annotate_error_43
 		// @fyi.error title Input File Does Not Exist
 		// @fyi.error short The tool tried fetching the target file but could not find it.
+		// @fyi.error.suggestion short Try typing ls on your terminal and make sure the target file is present.
 		return fyi.Error(err, "annotate_error_43")
 	}
 
 	// check the language is part of the supported group
 	if !language.IsSupportedLanguage(o.Language) {
-		// @fyi.error code annotate_error_52
+		// @fyi.error code annotate_error_55
 		// @fyi.error title Unsupported Language
-		// @fyi.error short The selected language is not supported by the tool's parser, available: go.
-		return fyi.Error(errors.Errorf("unsupported language: %s", o.Language), "annotate_error_52")
+		// @fyi.error short The target's language selected --language is not supported. Supported: go.
+		// @fyi.error severity medium
+		// @fyi.error.suggestion short Select a supported language, i.e: --language go.
+		return fyi.Error(errors.Errorf("unsupported language: %s", o.Language), "annotate_error_55")
 	}
 	return nil
 }
@@ -75,7 +79,13 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(
 		&o.WrapErrors,
 		"wrap",
-		false,
+		true,
 		"Wrap errors with error.fyi error wrapper library",
+	)
+	fs.BoolVar(
+		&o.AnnotateOnlyTodos,
+		"only-todo",
+		false,
+		"Annotates only the errors with a TODO comment above",
 	)
 }

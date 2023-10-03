@@ -8,7 +8,6 @@ import (
 	"github.com/tfadeyi/errors/internal/logging"
 	"github.com/tfadeyi/errors/internal/parser"
 	"github.com/tfadeyi/errors/internal/parser/language"
-	"github.com/tfadeyi/errors/internal/parser/options"
 )
 
 func initCmd(common *commonoptions.Options) *cobra.Command {
@@ -34,14 +33,15 @@ func initCmd(common *commonoptions.Options) *cobra.Command {
 
 			logger.Info("Initializing project")
 
-			parserOptions := []options.Option{
-				options.Include(opts.IncludedDirs...),
-				options.Logger(&logger),
+			parserOptions := []parser.Option{
+				parser.Include(opts.IncludedDirs...),
+				parser.Recursive(true),
+				parser.Logger(&logger),
 			}
 
 			switch opts.Language {
 			case language.Go:
-				parserOptions = append(parserOptions, options.Go())
+				parserOptions = append(parserOptions, parser.Go(cmd.Context()))
 			default:
 				// do nothing
 			}
@@ -51,20 +51,18 @@ func initCmd(common *commonoptions.Options) *cobra.Command {
 				"language", opts.Language,
 			)
 
-			// TODO check if error.fyi is present already if true don't annotate the codebase
-
 			p := parser.New(
 				parserOptions...,
 			)
 
 			logger.Info("Annotating error declarations...")
-			err := p.AnnotateErrors(cmd.Context(), opts.WrapErrors)
+			err := p.AnnotateAllErrors(cmd.Context(), opts.WrapErrors, opts.AnnotateOnlyTodos)
 			if err != nil {
 				return errors.Annotate(err, "failed to annotate the application")
 			}
 			logger.Info("Done ✅")
 
-			logger.Info("Project was successfully initialized ✅")
+			logger.Info("Project was successfully initialized!")
 			logger.Info("Check the target directories", "directories", opts.IncludedDirs)
 
 			return nil

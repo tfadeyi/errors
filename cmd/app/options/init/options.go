@@ -12,10 +12,12 @@ type (
 	// Options is the list of options/flag available to the application,
 	// plus the clients needed by the application to function.
 	Options struct {
-		IncludedDirs []string
-		Source       string
-		Language     string
-		WrapErrors   bool
+		IncludedDirs      []string
+		Source            string
+		Language          string
+		WrapErrors        bool
+		AnnotateOnlyTodos bool
+		Recursive         bool
 		*commonoptions.Options
 	}
 )
@@ -54,6 +56,13 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 		[]string{getWorkingDirOrDie()},
 		"Comma separated list of directories to be parses by the tool",
 	)
+	fs.BoolVarP(
+		&o.Recursive,
+		"recursive",
+		"r",
+		true,
+		"Recursively parses the target directories",
+	)
 	fs.StringVarP(
 		&o.Language,
 		"language",
@@ -66,5 +75,11 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 		"wrap",
 		false,
 		"Wrap errors with error.fyi error wrapper library",
+	)
+	fs.BoolVar(
+		&o.AnnotateOnlyTodos,
+		"todo",
+		false,
+		"Annotates only the errors with a TODO comment above",
 	)
 }

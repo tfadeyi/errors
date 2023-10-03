@@ -35,8 +35,8 @@ var rootCmd *cobra.Command
 
 func cmd(opts *commonoptions.Options) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "errctl",
-		Short: "Errctl.",
+		Use:   "fyictl",
+		Short: "fyictl is the tool used to simplify the creation and documentation of user facing errors",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			logger := logging.LoggerFromContext(cmd.Context())
 			logger = logger.WithName("root")

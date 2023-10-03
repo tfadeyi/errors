@@ -2,11 +2,14 @@ package golang
 
 import (
 	"context"
+	"github.com/dave/dst/decorator"
 	"go/ast"
 	goparser "go/parser"
 	"go/token"
+	"golang.org/x/tools/go/packages"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/juju/errors"
@@ -15,27 +18,20 @@ import (
 )
 
 type Parser struct {
-	// specs contains references to all the service specifications that have been parsed
-	specs map[string]api.Manifest
-	// current references the current service specification being parsed
-	current *api.Manifest
-	// sourceFile is the path to the target file to be parsed, i.e: -f file.go
-	sourceFile string
-	// sourceContent is the reader to the content to be parsed
-	sourceContent io.ReadCloser
-	includedDirs  []string
-	logger        *logging.Logger
-	fset          *token.FileSet
+	includedDirs        []string
+	logger              *logging.Logger
+	fset                *token.FileSet
+	strict              bool
+	applicationPackages map[string]*decorator.Package
 }
 
 // Options contains the configuration options available to the Parser
 type Options struct {
-	Logger *logging.Logger
-	// SourceFile is the path to the target file to be parsed, i.e: -f file.go
-	SourceFile string
-	// SourceContent is the reader to the content to be parsed
-	SourceContent    io.ReadCloser
+	Ctx              context.Context
+	Logger           *logging.Logger
 	InputDirectories []string
+	Strict           bool
+	Recursive        bool
 }
 
 // NewParser client Parser performs all checks at initialization time
@@ -47,65 +43,72 @@ func NewParser(opts *Options) *Parser {
 
 	logger := opts.Logger
 	dirs := opts.InputDirectories
-	sourceFile := opts.SourceFile
-	sourceContent := opts.SourceContent
+	ctx := opts.Ctx
+	recursive := opts.Recursive
 
-	return &Parser{
-		specs:         map[string]api.Manifest{},
-		current:       nil,
-		sourceFile:    sourceFile,
-		sourceContent: sourceContent,
-		includedDirs:  dirs,
-		logger:        logger,
-		fset:          token.NewFileSet(),
+	if ctx == nil {
+		ctx = context.Background()
 	}
-}
-
-// getAllGoPackages fetches all the available golang packages in the target directory and subdirectories and returns
-// a map of *ast.Package(s) keyed on the package name
-func getAllGoPackages(fset *token.FileSet, dir string, mode goparser.Mode) (map[string]*ast.Package, error) {
-	pkgs, err := goparser.ParseDir(fset, dir, nil, mode)
-	if err != nil {
-		return map[string]*ast.Package{}, err
+	if logger == nil {
+		log := logging.LoggerFromContext(ctx)
+		logger = &log
 	}
 
-	// walk through the directories and parse the not already found go packages
-	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			foundPkgs, err := goparser.ParseDir(fset, path, nil, mode)
-			if err != nil {
-				return err
-			}
-			for pkgName, pkg := range foundPkgs {
-				if _, ok := pkgs[pkgName]; !ok {
-					pkgs[pkgName] = pkg
-				}
+	applicationPackages := map[string]*decorator.Package{}
+	for _, dir := range dirs {
+		if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		pkgs, err := decorator.Load(&packages.Config{Dir: dir, Context: ctx,
+			Mode: packages.NeedFiles | packages.NeedImports | packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo})
+		if err != nil {
+			logger.Debug("Failed to load application packages", "dir", dir, "error", err)
+			continue
+		}
+
+		for _, pkg := range pkgs {
+			if _, ok := applicationPackages[pkg.Name]; !ok {
+				applicationPackages[pkg.Name] = pkg
 			}
 		}
-		return err
-	})
-	if err != nil {
-		return nil, err
+
+		if recursive {
+			// walk through the directories and parse the not already found go packages
+			err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+				if d.IsDir() {
+					pkgs, err = decorator.Load(&packages.Config{Dir: path, Context: ctx,
+						Mode: packages.NeedFiles | packages.NeedImports | packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo})
+					if err != nil {
+						return err
+					}
+
+					for _, pkg := range pkgs {
+						if _, ok := applicationPackages[pkg.Name]; !ok {
+							applicationPackages[pkg.Name] = pkg
+						}
+					}
+				}
+				return err
+			})
+			if err != nil {
+				logger.Debug("Failed to load application packages in subdirectories", "dir", dir, "error", err)
+				continue
+			}
+		}
 	}
 
-	if len(pkgs) == 0 {
-		return nil, errors.Errorf("no go packages were found in the target directory and subdirectories: %s", dir)
+	return &Parser{
+		includedDirs:        dirs,
+		logger:              logger,
+		fset:                token.NewFileSet(),
+		strict:              opts.Strict,
+		applicationPackages: applicationPackages,
 	}
-
-	return pkgs, nil
 }
 
 // getFile returns the ast go file struct given filename or an io.Reader. If an io.Reader is passed it will take precedence
 // over the filename
-func getFile(fset *token.FileSet, name string, file io.ReadCloser, mode goparser.Mode) (*ast.File, error) {
-	if file != nil {
-		defer func(file io.ReadCloser) {
-			err := file.Close()
-			if err != nil {
-				panic(err)
-			}
-		}(file)
-	}
+func getFile(fset *token.FileSet, name string, file io.Reader, mode goparser.Mode) (*ast.File, error) {
 	return goparser.ParseFile(fset, name, file, mode)
 }
 
@@ -115,19 +118,18 @@ func (p *Parser) warn(err error, keyValues ...interface{}) {
 	}
 }
 
-// Parse will parse the source code for fyi annotations.
-// In case of error during parsing, Parse returns an empty sloth.Spec
-func (p *Parser) ParseSource(ctx context.Context) (map[string]api.Manifest, error) {
-	return p.parseManifest(ctx)
+func (p *Parser) ParseSource(ctx context.Context, content io.Reader) (*api.Manifest, error) {
+	return p.parseSourceContentAndGenerateManifest(ctx, content)
 }
 
-// AnnotateErrors will parse the source code and annotate all error definitions with fyi comments
-func (p *Parser) AnnotateErrors(ctx context.Context, wrapErrors bool) error {
-	return p.annotateErrorDefinitions(ctx, wrapErrors)
+func (p *Parser) AnnotateAllErrors(ctx context.Context, wrapErrors, annotateOnlyTodos bool) error {
+	return p.annotateAllErrors(ctx, wrapErrors, annotateOnlyTodos)
 }
 
-func (p *Parser) stats() {
-	for _, manifest := range p.specs {
-		p.logger.Info("Found", "application", manifest.Name, "errors", len(manifest.ErrorsDefinitions))
-	}
+func (p *Parser) ParseAllSources(ctx context.Context) ([]*api.Manifest, error) {
+	return p.parseAllSourcesAndGenerateManifest(ctx)
+}
+
+func (p *Parser) AnnotateSourceErrors(ctx context.Context, filename string, wrapErrors, annotateOnlyTodos bool) error {
+	return p.annotateSourceFileErrors(ctx, filename, wrapErrors, annotateOnlyTodos)
 }

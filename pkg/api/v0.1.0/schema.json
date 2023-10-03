@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
   "$ref": "#/definitions/Manifest",
-  "$id": "https://tfadeyi.github.io/schemas/v0.1.0/manifest.schema.json",
+  "$id": "https://tfadeyi.github.io/schemas/v0.1.0/schema.json",
   "title": "error.fyi specification",
   "description": "The error.fyi specification",
   "definitions": {
@@ -39,38 +39,39 @@
       ],
       "title": "Manifest"
     },
-    "Solutions": {
+    "Suggestions": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/definitions/Solution"
+        "$ref": "#/definitions/Suggestion"
       },
       "required": [],
-      "title": "Solutions"
+      "title": "Suggestions"
     },
-    "Solution": {
+    "Suggestion": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "code": {
-          "description": "Unique identifier of the error solution.",
-          "type": "string"
-        },
-        "title": {
-          "description": "Title of the solution's error.",
+        "id": {
+          "description": "Unique identifier of the suggestion.",
           "type": "string"
         },
         "short": {
-          "short": "Short description of the solution.",
+          "description": "Short description of the solution.",
           "type": "string"
         },
-        "long": {
-          "short": "Long description of the solution.",
+        "docRef": {
+          "description": "Reference to the document .",
+          "type": "string"
+        },
+        "error_code": {
+          "description": "Error referenced by the suggestion.",
           "type": "string"
         }
       },
       "required": [
-        "code",
-        "short"
+        "id",
+        "short",
+        "error_code"
       ]
     },
     "ErrorDefinitions": {
@@ -104,9 +105,13 @@
           "description": "Detailed description of the error.",
           "type": "string"
         },
-        "solutions" : {
+        "severity" : {
+          "type": "string",
+          "enum": ["severe","medium","low"]
+        },
+        "suggestions" : {
           "type": "object",
-          "$ref": "#/definitions/Solutions"
+          "$ref": "#/definitions/Suggestions"
         },
         "meta": {
           "description": "Metadata information about the error.",

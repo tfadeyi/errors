@@ -13,7 +13,6 @@ import (
 	"go/types"
 	"golang.org/x/tools/go/packages"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,94 +22,9 @@ const (
 	ErrorFyiGoClientLibrary = "github.com/tfadeyi/errors"
 )
 
-// annotateErrorDefinitions will parse the source code and annotate all error definitions with fyi comments
-func (p *Parser) annotateErrorDefinitions(ctx context.Context, wrapErrors bool) error {
-	if p.sourceFile != "" {
-		pkgs, err := decorator.Load(&packages.Config{Dir: filepath.Dir(p.sourceFile),
-			Mode: packages.NeedFiles | packages.NeedImports | packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo})
-		if err != nil {
-			return err
-		}
-
-		pkg := pkgs[0]
-		var astFile *ast.File
-		for _, f := range pkg.Package.Syntax {
-			fpath := pkg.Fset.File(f.Pos()).Name()
-			if filepath.Base(fpath) == filepath.Base(p.sourceFile) {
-				astFile = f
-			}
-		}
-
-		p.logger.Debug("Parsing source code", "file", p.sourceFile)
-		out, err := annotateFile(astFile, pkg, wrapErrors)
-		if err != nil {
-			return err
-		}
-
-		writer, err := os.OpenFile(p.sourceFile, os.O_RDWR, 0644)
-		if err != nil {
-			return err
-		}
-
-		if _, err := io.Copy(writer, out); err != nil {
-			return err
-		}
-
-		p.logger.Debug("Parsed source code", "file", p.sourceFile)
-		return nil
-	}
-
-	applicationPackages := map[string]*decorator.Package{}
-	for _, dir := range p.includedDirs {
-		// handle signals with context
-		select {
-		case <-ctx.Done():
-			return errors.New("termination signal was received, terminating process...")
-		default:
-		}
-
-		if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
-			// skip if dir doesn't exists
-			p.warn(err)
-			continue
-		}
-		pkgs, err := decorator.Load(&packages.Config{Dir: dir,
-			Mode: packages.NeedFiles | packages.NeedImports | packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo})
-		if err != nil {
-			p.warn(err)
-			continue
-		}
-
-		for _, pkg := range pkgs {
-			if _, ok := applicationPackages[pkg.Name]; !ok {
-				applicationPackages[pkg.Name] = pkg
-			}
-		}
-
-		// walk through the directories and parse the not already found go packages
-		err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-			if d.IsDir() {
-				pkgs, err = decorator.Load(&packages.Config{Dir: path,
-					Mode: packages.NeedFiles | packages.NeedImports | packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo})
-				if err != nil {
-					return err
-				}
-
-				for _, pkg := range pkgs {
-					if _, ok := applicationPackages[pkg.Name]; !ok {
-						applicationPackages[pkg.Name] = pkg
-					}
-				}
-			}
-			return err
-		})
-		if err != nil {
-			p.warn(err)
-			continue
-		}
-	}
-
-	for _, pkg := range applicationPackages {
+// annotateErrors will parse the source code and annotate all error definitions with fyi comments
+func (p *Parser) annotateAllErrors(ctx context.Context, wrapErrors, annotateOnlyTodos bool) error {
+	for _, pkg := range p.applicationPackages {
 		// parse the rest of the files, skipping main.go
 		for _, file := range pkg.Package.Syntax {
 			filename := pkg.Fset.File(file.Pos()).Name()
@@ -123,7 +37,7 @@ func (p *Parser) annotateErrorDefinitions(ctx context.Context, wrapErrors bool) 
 			}
 			var err error
 
-			out, err := annotateFile(file, pkg, true)
+			out, err := annotateFile(file, pkg, wrapErrors, annotateOnlyTodos)
 			if err != nil {
 				p.warn(err)
 				continue
@@ -144,8 +58,57 @@ func (p *Parser) annotateErrorDefinitions(ctx context.Context, wrapErrors bool) 
 	return nil
 }
 
+// annotateSourceFileErrors will parse the source code and annotate all error definitions with fyi comments
+func (p *Parser) annotateSourceFileErrors(ctx context.Context, sourceFile string, wrapErrors, annotateOnlyTodos bool) error {
+	if sourceFile == "" {
+		// TODO more user friendly error
+		return errors.New("invalid source file")
+	}
+
+	p.logger.Debug("Parsing source code", "file", sourceFile)
+	pkgs, err := decorator.Load(&packages.Config{Dir: filepath.Dir(sourceFile), Context: ctx,
+		Mode: packages.NeedFiles | packages.NeedImports | packages.NeedName | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo})
+	if err != nil {
+		p.logger.Debug("Failed to load package information", "package", sourceFile, "error", err)
+		// TODO more user friendly error
+		return err
+	}
+
+	pkg := pkgs[0]
+	var astFile *ast.File
+	for _, f := range pkg.Package.Syntax {
+		fpath := pkg.Fset.File(f.Pos()).Name()
+		if filepath.Base(fpath) == filepath.Base(sourceFile) {
+			astFile = f
+		}
+	}
+
+	out, err := annotateFile(astFile, pkg, wrapErrors, annotateOnlyTodos)
+	if err != nil {
+		p.logger.Debug("Failed to annotate file", "file", sourceFile, "error", err)
+		// TODO more user friendly error
+		return err
+	}
+
+	writer, err := os.OpenFile(sourceFile, os.O_RDWR, 0644)
+	if err != nil {
+		p.logger.Debug("Failed to open to file", "file", sourceFile, "error", err)
+		// TODO more user friendly error
+		return err
+	}
+
+	if _, err := io.Copy(writer, out); err != nil {
+		p.logger.Debug("Failed to write to file", "file", sourceFile, "error", err)
+		// TODO more user friendly error
+		return err
+	}
+
+	p.logger.Debug("Parsed source code", "file", sourceFile)
+	return nil
+}
+
 // annotateFile annotates with @fyi annotation, errors and main functions if they are present in the ast file.
-func annotateFile(astFile *ast.File, pkg *decorator.Package, shouldWrap bool) (io.Reader, error) {
+func annotateFile(astFile *ast.File, pkg *decorator.Package, shouldWrap, annotateOnlyTodos bool) (io.Reader, error) {
 	dec := pkg.Decorator
 	decorateFile, err := dec.DecorateFile(astFile)
 	if err != nil {
@@ -171,14 +134,14 @@ func annotateFile(astFile *ast.File, pkg *decorator.Package, shouldWrap bool) (i
 			}
 		case *ast.ReturnStmt:
 			ast.Inspect(node, func(returnDecl ast.Node) bool {
-				if err := annotateReturnStmt(astFile.Name.String(), shouldWrap, node, returnDecl, pkg); err != nil {
+				if err := annotateReturnStmt(astFile.Name.String(), node, returnDecl, pkg, shouldWrap, annotateOnlyTodos); err != nil {
 					return true
 				}
 				return false
 			})
 		case *ast.GenDecl:
 			ast.Inspect(node, func(genDecl ast.Node) bool {
-				if err := annotateGenericDecl(astFile.Name.String(), shouldWrap, node, genDecl, pkg); err != nil {
+				if err := annotateGenericDecl(astFile.Name.String(), node, genDecl, pkg, shouldWrap, annotateOnlyTodos); err != nil {
 					return true
 				}
 				return false
@@ -212,8 +175,8 @@ func isError(v ast.Expr, info *types.Info) bool {
 }
 
 // annotateReturnStmt annotates the errors on a return statement node
-func annotateReturnStmt(filename string, shouldWrap bool,
-	parentNode ast.Node, errorNode ast.Node, pkg *decorator.Package) error {
+func annotateReturnStmt(filename string, parentNode ast.Node, errorNode ast.Node, pkg *decorator.Package,
+	shouldWrap, annotateOnlyTodos bool) error {
 	v, ok := errorNode.(ast.Expr)
 	if !ok {
 		return errors.New("node is not return statement")
@@ -225,33 +188,46 @@ func annotateReturnStmt(filename string, shouldWrap bool,
 
 	if isError(v, info) {
 		errName := fmt.Sprintf("%s_error_%d", filename, fset.Position(v.Pos()).Line)
-		// Wrap the error with fyi.Error
-		if shouldWrap {
-			switch v.(type) {
-			case *ast.CallExpr:
-				// store the current error definition, so it can be added as an argument
-				currentErrorFunc := dst.Clone(dec.Dst.Nodes[v]).(*dst.CallExpr)
-				//dst.Print(dec.Dst.Nodes[v])
-				dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Name = "Error"
-				dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Path = ErrorFyiGoClientLibrary
-				dec.Dst.Nodes[v].(*dst.CallExpr).Args = []dst.Expr{currentErrorFunc, &dst.BasicLit{Value: fmt.Sprintf("%q", errName), Kind: token.STRING}}
-			case *ast.Ident:
-				// store the current error definition, so it can be added as an argument
-				currentError := dst.Clone(dec.Dst.Nodes[v]).(*dst.Ident)
-				dec.Dst.Nodes[v].(*dst.Ident).Name = fmt.Sprintf("Error(%s, %q)", currentError.Name, errName)
-				dec.Dst.Nodes[v].(*dst.Ident).Path = ErrorFyiGoClientLibrary
-			}
-		}
-
-		// regardless of the node (*ast.CallExpr or *ast.Ident) we should annotate it
-		dec.Dst.Nodes[parentNode].Decorations().Before = dst.NewLine
 		// check that no @fyi is already present in the comments before updating the comments
-		if !strings.Contains(strings.Join(dec.Dst.Nodes[parentNode].Decorations().Start.All(), ","), "@fyi") {
+		comments := strings.Join(dec.Dst.Nodes[parentNode].Decorations().Start.All(), ",")
+		annotate := func() {
+			// Wrap the error with fyi.Error
+			if shouldWrap {
+				switch v.(type) {
+				case *ast.CallExpr:
+					// store the current error definition, so it can be added as an argument
+					currentErrorFunc := dst.Clone(dec.Dst.Nodes[v]).(*dst.CallExpr)
+					//dst.Print(dec.Dst.Nodes[v])
+					dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Name = "Error"
+					dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Path = ErrorFyiGoClientLibrary
+					dec.Dst.Nodes[v].(*dst.CallExpr).Args = []dst.Expr{currentErrorFunc, &dst.BasicLit{Value: fmt.Sprintf("%q", errName), Kind: token.STRING}}
+				case *ast.Ident:
+					// store the current error definition, so it can be added as an argument
+					currentError := dst.Clone(dec.Dst.Nodes[v]).(*dst.Ident)
+					dec.Dst.Nodes[v].(*dst.Ident).Name = fmt.Sprintf("Error(%s, %q)", currentError.Name, errName)
+					dec.Dst.Nodes[v].(*dst.Ident).Path = ErrorFyiGoClientLibrary
+				}
+			}
+
+			// regardless of the node (*ast.CallExpr or *ast.Ident) we should annotate it
+			dec.Dst.Nodes[parentNode].Decorations().Before = dst.NewLine
 			dec.Dst.Nodes[parentNode].Decorations().Start.Append(
 				fmt.Sprintf("// @fyi.error code %s", errName),
-				"// @fyi.error title <CHANGE ME>",
-				"// @fyi.error short <CHANGE ME>",
+				"// @fyi.error title <CHANGE ME TO A NICE TITLE>",
+				"// @fyi.error short <TL;DR ON THE CAUSE OF THE ERROR>",
+				"// @fyi.error severity severe|medium|low",
+				"// @fyi.error.suggestion short <TL;DR ON HOW CAN THE ERROR BE FIXED?>",
 			)
+		}
+
+		if !strings.Contains(comments, "@fyi") {
+			if annotateOnlyTodos {
+				if strings.Contains(comments, "TODO") {
+					annotate()
+				}
+			} else {
+				annotate()
+			}
 		}
 
 	}
@@ -259,8 +235,8 @@ func annotateReturnStmt(filename string, shouldWrap bool,
 }
 
 // annotateGenericDecl annotates the errors on a genericDecl node
-func annotateGenericDecl(filename string, shouldWrap bool,
-	parentNode ast.Node, errorNode ast.Node, pkg *decorator.Package) error {
+func annotateGenericDecl(filename string, parentNode ast.Node, errorNode ast.Node, pkg *decorator.Package,
+	shouldWrap, annotateOnlyTodos bool) error {
 	v, ok := errorNode.(ast.Expr)
 	if !ok {
 		return errors.New("node is not generic declaration")
@@ -277,22 +253,36 @@ func annotateGenericDecl(filename string, shouldWrap bool,
 		if _, ok := v.(*ast.CallExpr); !ok {
 			return errors.New("invalid error node")
 		}
-		// Wrap the error with fyi.Error
-		if shouldWrap {
-			// store the current error definition, so it can be added as an argument
-			currentErrorFunc := dst.Clone(dec.Dst.Nodes[v]).(*dst.CallExpr)
-			dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Name = "Error"
-			dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Path = ErrorFyiGoClientLibrary
-			dec.Dst.Nodes[v].(*dst.CallExpr).Args = []dst.Expr{currentErrorFunc, &dst.BasicLit{Value: fmt.Sprintf("%q", errName), Kind: token.STRING}}
-		}
 
-		dec.Dst.Nodes[parentNode].Decorations().Before = dst.NewLine
-		if !strings.Contains(strings.Join(dec.Dst.Nodes[parentNode].Decorations().Start.All(), ","), "@fyi") {
+		comments := strings.Join(dec.Dst.Nodes[parentNode].Decorations().Start.All(), ",")
+		annotate := func() {
+			dec.Dst.Nodes[parentNode].Decorations().Before = dst.NewLine
+			// Wrap the error with fyi.Error
+			if shouldWrap {
+				// store the current error definition, so it can be added as an argument
+				currentErrorFunc := dst.Clone(dec.Dst.Nodes[v]).(*dst.CallExpr)
+				dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Name = "Error"
+				dec.Dst.Nodes[v].(*dst.CallExpr).Fun.(*dst.Ident).Path = ErrorFyiGoClientLibrary
+				dec.Dst.Nodes[v].(*dst.CallExpr).Args = []dst.Expr{currentErrorFunc, &dst.BasicLit{Value: fmt.Sprintf("%q", errName), Kind: token.STRING}}
+			}
+
 			dec.Dst.Nodes[parentNode].Decorations().Start.Append(
 				fmt.Sprintf("// @fyi.error code %s", errName),
-				"// @fyi.error title <CHANGE ME>",
-				"// @fyi.error short <CHANGE ME>",
+				"// @fyi.error title <CHANGE ME TO A NICE TITLE>",
+				"// @fyi.error short <TL;DR ON THE CAUSE OF THE ERROR>",
+				"// @fyi.error severity severe|medium|low ",
+				"// @fyi.error.suggestion short <TL;DR ON HOW CAN THE ERROR BE FIXED?>",
 			)
+		}
+
+		if !strings.Contains(comments, "@fyi") {
+			if annotateOnlyTodos {
+				if strings.Contains(comments, "TODO") {
+					annotate()
+				}
+			} else {
+				annotate()
+			}
 		}
 	}
 	return nil

@@ -13,7 +13,7 @@ type (
 	// Target is an abstraction for content generators, i.e: yaml and markdown.
 	Target interface {
 		// GenerateManifests transcribes the content from the specs to the writer
-		GenerateManifests(ctx context.Context, manifests map[string]api.Manifest) error
+		GenerateManifests(ctx context.Context, manifests ...*api.Manifest) error
 	}
 
 	Generator struct {
@@ -38,11 +38,11 @@ func New(opts ...Option) *Generator {
 	return &Generator{defaultOpts}
 }
 
-func (g *Generator) GenerateManifests(ctx context.Context, manifests map[string]api.Manifest) error {
+func (g *Generator) GenerateManifests(ctx context.Context, manifests ...*api.Manifest) error {
 	if g.Opts.TargetManifestGenerator == nil {
 		return ErrNoContentGenerator
 	}
-	return g.Opts.TargetManifestGenerator.GenerateManifests(ctx, manifests)
+	return g.Opts.TargetManifestGenerator.GenerateManifests(ctx, manifests...)
 }
 
 func ValidateFromReader(r io.Reader) (*api.Manifest, error) {

@@ -16,8 +16,8 @@ import (
 //go:embed errors.yaml
 var defaultYAML []byte
 
-// @fyi name errctl
-// @fyi title error.fyi errctl CLI example
+// @fyi name fyictl
+// @fyi title fyictl CLI tool
 // @fyi base_url https://tfadeyi.github.io
 // @fyi version v0.1.0
 // @fyi description CLI to aid the generation of application errors manifests

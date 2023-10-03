@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -23,8 +24,8 @@ type (
 	// Scope defines the statement scope, similar to a code function
 	Scope struct {
 		// Type is the specification struct a statement refers to
-		Type  string `(Fyi @((".error" (".solution" | ".metadata")? ))?)`
-		Value string `Whitespace* @("name"|"title"|"description"|"base_url"|"version"|"short"|"long"|"code")`
+		Type  string `(Fyi @((".error" (".suggestion")? ))?)`
+		Value string `Whitespace* @("name"|"id"|"title"|"description"|"base_url"|"version"|"short"|"long"|"code"|"error_code"|"severity")`
 	}
 )
 
@@ -47,7 +48,12 @@ func parseAndAssignStructFields(attr string, value string, fields []reflect.Stru
 				if v.CanSet() {
 					switch v.Kind() {
 					case reflect.Pointer:
-						v.Set(reflect.ValueOf(&value))
+						if field.Name == "Severity" {
+							severity := api.ErrorSeverity(value)
+							v.Set(reflect.ValueOf(&severity))
+						} else {
+							v.Set(reflect.ValueOf(&value))
+						}
 					case reflect.Bool:
 						b, err := strconv.ParseBool(value)
 						if err != nil {
@@ -83,30 +89,34 @@ func (g Grammar) parse() (*api.Manifest, error) {
 		Title:             nil,
 		Version:           "",
 	}
+
+	lowSeverity := api.ErrorSeverityLow
 	var foundErr = &api.Error{
-		Code:      "",
-		Long:      nil,
-		Meta:      &api.ErrorMeta{Loc: nil},
-		Short:     "",
-		Title:     "",
-		Solutions: api.Solutions{},
+		Code:        "",
+		Long:        nil,
+		Meta:        &api.ErrorMeta{Loc: nil},
+		Short:       "",
+		Title:       "",
+		Severity:    &lowSeverity,
+		Suggestions: api.Suggestions{},
 	}
-	var foundSolution = &api.Solution{
-		Code:  "",
-		Short: "",
-		Long:  nil,
-		Title: nil,
+	var foundSolution = &api.Suggestion{
+		Id:     "",
+		Short:  "",
+		DocRef: nil,
 	}
 
 	for _, attr := range g.Stmts {
 		switch attr.Scope.GetType() {
-		case ".error.solution":
+		case ".error.suggestion":
 			fields := reflect.VisibleFields(reflect.TypeOf(*foundSolution))
 			pValue := reflect.ValueOf(foundSolution).Elem()
 			if err := parseAndAssignStructFields(strings.ToLower(attr.Scope.Value), strings.TrimSpace(attr.Value), fields, pValue); err != nil {
 				continue
 			}
-			foundErr.Solutions[foundSolution.Code] = *foundSolution
+			foundSolution.ErrorCode = foundErr.Code
+			foundSolution.Id = fmt.Sprintf("%d", len(foundErr.Suggestions)+1)
+			foundErr.Suggestions[foundSolution.Id] = *foundSolution
 		case ".error":
 			fields := reflect.VisibleFields(reflect.TypeOf(*foundErr))
 			pValue := reflect.ValueOf(foundErr).Elem()

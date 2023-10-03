@@ -23,10 +23,14 @@ type (
 		// source allows clients to pass the contents of the error specification file as a []byte
 		// WrapperOption: func Manifest(source []byte) WrapperOption
 		source []byte
-		// ErrorDefinitionURLPath is the parent URL path where the errors will be available
-		ErrorDefinitionURLPath string
-		// showErrorURL enables and disables the errors' URL being shown when the error is returned
-		showErrorURL bool
+		// errorDefinitionURLPath is the parent URL path where the errors will be available
+		errorDefinitionURLPath string
+		// numberOfSuggestionsDisplayed number of suggestions shown when the error is returned
+		numberOfSuggestionsDisplayed int
+		// showMarkdownErrors enables or disables the error's pretty view being shown at error return time
+		showMarkdownErrors bool
+		// Silent stops the additional error context from being wrapped into the error
+		silent bool
 	}
 
 	// Wrapper is the wrapper struct for errors
@@ -41,21 +45,28 @@ var (
 )
 
 const (
-	defaultErrorSpecificationLocation = "./default.yaml"
+	defaultErrorSpecificationLocation = "./errors.yaml"
 )
 
 func New(opts ...WrapperOption) *Wrapper {
 	wrapper := &Wrapper{
-		client:  nil,
-		Options: &wrapperOptions{},
+		client: nil,
+		Options: &wrapperOptions{
+			numberOfSuggestionsDisplayed: 1,
+			showMarkdownErrors:           true,
+			silent:                       false,
+		},
 	}
 	for _, opt := range opts {
 		opt(wrapper.Options)
 	}
 
 	cl := local.New(errorclient.Options{
-		SourceFilename: wrapper.Options.sourceFilename,
-		Source:         wrapper.Options.source,
+		SourceFilename:         wrapper.Options.sourceFilename,
+		Source:                 wrapper.Options.source,
+		ErrorDefinitionURLPath: wrapper.Options.errorDefinitionURLPath,
+		ShowMarkdownErrors:     wrapper.Options.showMarkdownErrors,
+		NumberOfSuggestions:    wrapper.Options.numberOfSuggestionsDisplayed,
 	})
 
 	wrapper.client = cl
@@ -63,32 +74,48 @@ func New(opts ...WrapperOption) *Wrapper {
 	return wrapper
 }
 
-func (w *Wrapper) SetManifest(content []byte) {
+func (w *Wrapper) Manifest(content []byte) {
 	w.Options.source = content
-	w.client = local.New(errorclient.Options{
-		SourceFilename: w.Options.sourceFilename,
-		Source:         w.Options.source,
-	})
+	w.updateErrorClient()
 }
 
-func (w *Wrapper) SetManifestFilename(filepath string) {
+func (w *Wrapper) ManifestFilename(filepath string) {
 	w.Options.sourceFilename = filepath
-	w.client = local.New(errorclient.Options{
-		SourceFilename: w.Options.sourceFilename,
-		Source:         w.Options.source,
-	})
+	w.updateErrorClient()
 }
 
-func (w *Wrapper) SetLogger(logger *log.Logger) {
+func (w *Wrapper) Logger(logger *log.Logger) {
 	w.Options.logger = logger
 }
 
-func (w *Wrapper) SetErrorParentPath(parentDir string) {
-	w.Options.ErrorDefinitionURLPath = parentDir
+func (w *Wrapper) ErrorParentPath(parentDir string) {
+	w.Options.errorDefinitionURLPath = parentDir
+	w.updateErrorClient()
 }
 
-func (w *Wrapper) ShowErrorURL(show bool) {
-	w.Options.showErrorURL = show
+func (w *Wrapper) Silence(silence bool) {
+	w.Options.silent = silence
+	w.updateErrorClient()
+}
+
+func (w *Wrapper) DisplayedSuggestions(num int) {
+	w.Options.numberOfSuggestionsDisplayed = num
+	w.updateErrorClient()
+}
+
+func (w *Wrapper) MarkdownRender(markdown bool) {
+	w.Options.showMarkdownErrors = markdown
+	w.updateErrorClient()
+}
+
+func (w *Wrapper) updateErrorClient() {
+	w.client = local.New(errorclient.Options{
+		SourceFilename:         w.Options.sourceFilename,
+		Source:                 w.Options.source,
+		ErrorDefinitionURLPath: w.Options.errorDefinitionURLPath,
+		ShowMarkdownErrors:     w.Options.showMarkdownErrors,
+		NumberOfSuggestions:    w.Options.numberOfSuggestionsDisplayed,
+	})
 }
 
 // ErrorWithContext wraps the incoming error with error defined by the Aloe specification according to the input code.
@@ -98,28 +125,22 @@ func (w *Wrapper) ErrorWithContext(ctx context.Context, err error, code string) 
 		return err
 	}
 
-	newErrMessage, genErr := w.client.GenerateErrorMessageFromCode(ctx, code)
-	if genErr != nil {
-		w.log(genErr.Error())
-		return err
+	if !w.Options.silent {
+		newErrMessage, genErr := w.client.GenerateErrorMessageFromCode(ctx, code)
+		if genErr != nil {
+			w.log(genErr.Error())
+			return err
+		}
+		return fmt.Errorf("[%w]\n%s", err, newErrMessage)
 	}
 
-	return fmt.Errorf("%s: [%w]", newErrMessage, err)
+	return err
 }
 
 // Error wraps the incoming error with error defined by the application error manifest according to the input code.
 // if no error is found in the application error manifest, the original error is returned.
 func (w *Wrapper) Error(err error, code string) error {
-	if w == nil || err == nil {
-		return err
-	}
-	newErrMessage, errFromGenerator := w.client.GenerateErrorMessageFromCode(context.Background(), code)
-	if errFromGenerator != nil {
-		w.log(errFromGenerator.Error())
-		return err
-	}
-
-	return fmt.Errorf("[%w]\n%s", err, newErrMessage)
+	return w.ErrorWithContext(context.Background(), err, code)
 }
 
 func (w *Wrapper) log(msg string, keyVal ...any) {
@@ -131,23 +152,31 @@ func (w *Wrapper) log(msg string, keyVal ...any) {
 // Global Wrapper Functions //
 
 func SetManifest(content []byte) {
-	global.SetManifest(content)
+	global.Manifest(content)
 }
 
 func SetManifestFilename(filepath string) {
-	global.SetManifestFilename(filepath)
+	global.ManifestFilename(filepath)
 }
 
 func SetLogger(logger *log.Logger) {
-	global.SetLogger(logger)
+	global.Logger(logger)
 }
 
 func SetErrorParentPath(parentDir string) {
-	global.SetErrorParentPath(parentDir)
+	global.ErrorParentPath(parentDir)
 }
 
-func ShowErrorURL(show bool) {
-	global.ShowErrorURL(show)
+func SetSilence(silence bool) {
+	global.Silence(silence)
+}
+
+func SetDisplayedSuggestions(num int) {
+	global.DisplayedSuggestions(num)
+}
+
+func SetMarkdownRender(markdown bool) {
+	global.MarkdownRender(markdown)
 }
 
 // ErrorWithContext wraps the incoming error with error defined by the application error manifest according to the input code.
@@ -184,12 +213,24 @@ func Logger(logger *log.Logger) WrapperOption {
 
 func ErrorParentPath(parentDir string) WrapperOption {
 	return func(o *wrapperOptions) {
-		o.ErrorDefinitionURLPath = parentDir
+		o.errorDefinitionURLPath = parentDir
 	}
 }
 
-func DisableErrorURL() WrapperOption {
+func Silence(silence bool) WrapperOption {
 	return func(o *wrapperOptions) {
-		o.showErrorURL = false
+		o.silent = silence
+	}
+}
+
+func DisplayedSuggestions(num int) WrapperOption {
+	return func(o *wrapperOptions) {
+		o.numberOfSuggestionsDisplayed = num
+	}
+}
+
+func MarkdownRender(markdown bool) WrapperOption {
+	return func(o *wrapperOptions) {
+		o.showMarkdownErrors = markdown
 	}
 }
