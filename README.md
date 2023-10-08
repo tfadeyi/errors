@@ -13,6 +13,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/tfadeyi/errors?color=green&style=for-the-badge)](https://github.com/tfadeyi/errors/releases)
 [![Nix Devshell](https://img.shields.io/badge/nix-devshell-blue?logo=NixOS&style=for-the-badge)](https://github.com/tfadeyi/errors)
+[![Go Reference](https://pkg.go.dev/badge/badge/github.com/tfadeyi/errors.svg)](https://pkg.go.dev/badge/github.com/tfadeyi/errors)
 [![Continuous Integration](https://img.shields.io/github/actions/workflow/status/tfadeyi/errors/ci.yml?branch=main&style=for-the-badge)](https://github.com/tfadeyi/errors/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-yellowgreen.svg?style=for-the-badge)](https://github.com/tfadeyi/errors/blob/main/LICENSE)
 [![Language](https://img.shields.io/github/go-mod/go-version/tfadeyi/errors?style=for-the-badge)](https://github.com/tfadeyi/errors)
@@ -73,7 +74,7 @@ way to give their users a smoother error troubleshooting experience.
 * Install the error.fyi's CLI.
 
     ```sh
-     curl -sfL https://raw.githubusercontent.com/slosive/sloscribe/main/install.sh | sh -
+     curl -sfL https://raw.githubusercontent.com/tfadeyi/errors/main/install.sh | sh -
     ```
 
 ## 🖥️  Usage

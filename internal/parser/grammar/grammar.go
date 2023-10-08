@@ -25,7 +25,7 @@ type (
 	Scope struct {
 		// Type is the specification struct a statement refers to
 		Type  string `(Fyi @((".error" (".suggestion")? ))?)`
-		Value string `Whitespace* @("name"|"id"|"title"|"description"|"base_url"|"version"|"short"|"long"|"code"|"error_code"|"severity")`
+		Value string `Whitespace* @("repository"|"name"|"id"|"title"|"description"|"base_url"|"version"|"short"|"long"|"code"|"error_code"|"severity")`
 	}
 )
 
@@ -88,6 +88,7 @@ func (g Grammar) parse() (*api.Manifest, error) {
 		Name:              "",
 		Title:             nil,
 		Version:           "",
+		Repository:        "",
 	}
 
 	lowSeverity := api.ErrorSeverityLow

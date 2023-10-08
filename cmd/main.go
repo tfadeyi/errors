@@ -1,4 +1,4 @@
-//go:generate go run main.go manifest create -o errors.yaml --log-level none
+//go:generate go run main.go manifest create -o errors.yaml -d ../
 package main
 
 import (
@@ -18,6 +18,7 @@ var defaultYAML []byte
 
 // @fyi name fyictl
 // @fyi title fyictl CLI tool
+// @fyi repository github.com/tfadeyi/errors
 // @fyi base_url https://tfadeyi.github.io
 // @fyi version v0.1.0
 // @fyi description CLI to aid the generation of application errors manifests

@@ -175,6 +175,9 @@ type Manifest struct {
 	// Name corresponds to the JSON schema field "name".
 	Name string `json:"name" yaml:"name" mapstructure:"name"`
 
+	// Repository corresponds to the JSON schema field "repository".
+	Repository string `json:"repository" yaml:"repository" mapstructure:"repository"`
+
 	// Display name of the manifest
 	Title *string `json:"title,omitempty" yaml:"title,omitempty" mapstructure:"title,omitempty"`
 
@@ -193,6 +196,9 @@ func (j *Manifest) UnmarshalJSON(b []byte) error {
 	}
 	if v, ok := raw["name"]; !ok || v == nil {
 		return fmt.Errorf("field name in Manifest: required")
+	}
+	if v, ok := raw["repository"]; !ok || v == nil {
+		return fmt.Errorf("field repository in Manifest: required")
 	}
 	if v, ok := raw["version"]; !ok || v == nil {
 		return fmt.Errorf("field version in Manifest: required")

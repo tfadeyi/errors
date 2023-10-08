@@ -8,7 +8,7 @@ errors_definitions:
         code: annotate_error_43
         meta:
             loc:
-                filename: /home/oluwole/go/src/github.com/tfadeyi/errors/cmd/app/options/annotate/options.go
+                filename: github.com/tfadeyi/errors/cmd/app/options/annotate/options.go
                 line: 45
         severity: low
         short: The tool tried fetching the target file but could not find it.
@@ -22,7 +22,7 @@ errors_definitions:
         code: annotate_error_55
         meta:
             loc:
-                filename: /home/oluwole/go/src/github.com/tfadeyi/errors/cmd/app/options/annotate/options.go
+                filename: github.com/tfadeyi/errors/cmd/app/options/annotate/options.go
                 line: 54
         severity: medium
         short: 'The target&#39;s language selected --language is not supported. Supported: go.'
@@ -36,8 +36,8 @@ errors_definitions:
         code: invalid_output_format
         meta:
             loc:
-                filename: /home/oluwole/go/src/github.com/tfadeyi/errors/cmd/app/options/manifest/generate/options.go
-                line: 46
+                filename: github.com/tfadeyi/errors/cmd/app/options/manifest/generate/options.go
+                line: 47
         severity: low
         short: 'the output format passed to --format was invalid, valid: yaml, markdown'
         title: invalid_output_format
@@ -45,11 +45,12 @@ errors_definitions:
         code: invalid_yaml_output_file
         meta:
             loc:
-                filename: /home/oluwole/go/src/github.com/tfadeyi/errors/cmd/app/options/manifest/generate/options.go
-                line: 55
+                filename: github.com/tfadeyi/errors/cmd/app/options/manifest/generate/options.go
+                line: 56
         severity: low
         short: the output file passed to the CLI is a directory not a file, please point a file
         title: invalid_yaml_output_file
 name: fyictl
+repository: github.com/tfadeyi/errors
 title: fyictl CLI tool
 version: v0.1.0

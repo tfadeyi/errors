@@ -27,6 +27,10 @@
           "type": "string",
           "format": "string"
         },
+        "repository": {
+          "type": "string",
+          "format": "string"
+        },
         "errors_definitions": {
           "description": "List of the manifest's error definitions.",
           "$ref": "#/definitions/ErrorDefinitions"
@@ -35,6 +39,7 @@
       "required": [
         "base_url",
         "version",
+        "repository",
         "name"
       ],
       "title": "Manifest"

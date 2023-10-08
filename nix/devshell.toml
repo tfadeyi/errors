@@ -9,7 +9,7 @@ Use CTRL-D to leave the shell
 """
 
 packages = [
-    "go",
+    "go_1_21",
     "gotools",
     "go-tools",
     "golangci-lint",

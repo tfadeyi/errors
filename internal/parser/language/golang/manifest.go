@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"io"
 	"k8s.io/utils/pointer"
+	"path/filepath"
 	"strings"
 
 	"github.com/juju/errors"
@@ -44,6 +45,9 @@ func (p *Parser) parseManifestComments(fset *token.FileSet, manifest api.Manifes
 		if manifest.BaseUrl == "" {
 			manifest.BaseUrl = bluemonday.UGCPolicy().Sanitize(partialManifest.BaseUrl)
 		}
+		if manifest.Repository == "" {
+			manifest.Repository = bluemonday.UGCPolicy().Sanitize(partialManifest.Repository)
+		}
 		if manifest.Description == nil && partialManifest.Description != nil {
 			manifest.Description = pointer.String(bluemonday.UGCPolicy().Sanitize(*partialManifest.Description))
 		}
@@ -53,7 +57,7 @@ func (p *Parser) parseManifestComments(fset *token.FileSet, manifest api.Manifes
 
 		for key, definition := range partialManifest.ErrorsDefinitions {
 			definition.Meta = &api.ErrorMeta{Loc: &api.ErrorMetaLoc{
-				Filename: fset.File(comment.Pos()).Name(),
+				Filename: getErrorLocationPath(manifest, fset.File(comment.Pos()).Name()),
 				Line:     fset.Position(comment.Pos()).Line,
 			}}
 			// sanitize all fields
@@ -173,4 +177,13 @@ func (p *Parser) parseAllSourcesAndGenerateManifest(ctx context.Context) ([]*api
 	}
 
 	return []*api.Manifest{&manifest}, nil
+}
+
+func getErrorLocationPath(manifest api.Manifest, path string) string {
+	repo := manifest.Repository
+	_, after, ok := strings.Cut(path, repo)
+	if !ok {
+		return path
+	}
+	return filepath.Join(repo, after)
 }

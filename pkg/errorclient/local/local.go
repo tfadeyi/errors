@@ -4,37 +4,37 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/tfadeyi/errors/pkg/errorclient"
 	"os"
 	"strings"
 
 	"github.com/charmbracelet/glamour"
-	"github.com/tfadeyi/errors/internal/errorclient"
 	api "github.com/tfadeyi/errors/pkg/api/v0.1.0"
 	"gopkg.in/yaml.v3"
 )
 
 type (
 	Client struct {
-		errorclient.Options
+		*errorclient.ErrClientOptions
 		Spec *api.Manifest
 	}
 )
 
 var (
-	ErrSpecificationDoesNotExist = errors.New("specification file doesn't exist")
+	ErrSpecificationDoesNotExist = errors.New("manifest file doesn't exist")
 )
 
 const (
 	errorDefinitionPath = "errors"
 )
 
-func New(opts errorclient.Options) errorclient.Client {
+func New(opts errorclient.ErrClientOptions) errorclient.ErrClient {
 	if opts.ErrorDefinitionURLPath == "" {
 		opts.ErrorDefinitionURLPath = errorDefinitionPath
 	}
 	return &Client{
-		Options: opts,
-		Spec:    nil,
+		ErrClientOptions: &opts,
+		Spec:             nil,
 	}
 }
 
@@ -76,7 +76,7 @@ func (l *Client) GenerateErrorMessageFromCode(ctx context.Context, code string) 
 		return "", errors.New("no error was not found in the error specification file")
 	}
 
-	if l.ShowMarkdownErrors {
+	if l.DisplayMarkdownErrors {
 		return l.printMarkdownError(v)
 	}
 
@@ -93,7 +93,7 @@ func (l *Client) printTextError(er api.Error) (string, error) {
 		}
 	}
 
-	if er.Short != "" {
+	if er.Short != "" && l.DisplayShortSummary {
 		if _, err := content.WriteString("What caused the error\n"); err != nil {
 			return "", err
 		}
@@ -104,11 +104,18 @@ func (l *Client) printTextError(er api.Error) (string, error) {
 			return "", err
 		}
 	}
-	if len(er.Suggestions) > 0 && l.NumberOfSuggestions > 0 {
-		if _, err := content.WriteString("Quick Solutions\n"); err != nil {
+
+	if l.DisplayErrorURL {
+		if l.OverrideErrorURL != "" {
+			url = l.OverrideErrorURL
+		}
+		if _, err := content.WriteString(fmt.Sprintf("\nAdditional information is available at: %s\n", url)); err != nil {
 			return "", err
 		}
-		if _, err := content.WriteString(fmt.Sprintf("Additional information is available at: %s\n", url)); err != nil {
+	}
+
+	if len(er.Suggestions) > 0 && l.NumberOfSuggestions > 0 {
+		if _, err := content.WriteString("Quick Solutions\n"); err != nil {
 			return "", err
 		}
 		count := 0
@@ -138,7 +145,7 @@ func (l *Client) printMarkdownError(er api.Error) (string, error) {
 		}
 	}
 
-	if er.Short != "" {
+	if er.Short != "" && l.DisplayShortSummary {
 		if _, err := content.WriteString("## What caused the error\n"); err != nil {
 			return "", err
 		}
@@ -149,15 +156,20 @@ func (l *Client) printMarkdownError(er api.Error) (string, error) {
 			return "", err
 		}
 	}
+
+	if l.DisplayErrorURL {
+		if l.OverrideErrorURL != "" {
+			url = l.OverrideErrorURL
+		}
+		if _, err := content.WriteString(fmt.Sprintf("\n> Additional information is available at: %s\n", url)); err != nil {
+			return "", err
+		}
+	}
+
 	if len(er.Suggestions) > 0 && l.NumberOfSuggestions > 0 {
 		if _, err := content.WriteString("## Quick Solutions\n"); err != nil {
 			return "", err
 		}
-
-		if _, err := content.WriteString(fmt.Sprintf("> Additional information is available at: %s\n", url)); err != nil {
-			return "", err
-		}
-
 		count := 0
 		for _, suggestion := range er.Suggestions {
 			if count == l.NumberOfSuggestions {

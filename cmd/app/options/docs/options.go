@@ -65,12 +65,13 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 		&o.OutputDirectory,
 		"output",
 		"o",
-		"./errors",
+		"./docs",
 		"Target output file or directory to store the generated output",
 	)
-	fs.StringVar(
+	fs.StringVarP(
 		&o.Source,
-		"manifest",
+		"file",
+		"f",
 		"",
 		"Path to application error manifest file",
 	)

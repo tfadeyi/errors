@@ -1,5 +1,5 @@
 {
-  description = "go-aloe library nix flake";
+  description = "error.fyi library nix flake";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";

@@ -15,12 +15,14 @@ func TestGrammar(t *testing.T) {
 @fyi name cli
 @fyi base_url https://tfadeyi.github.io
 @fyi description this is an example description
+@fyi repository https://github.com/tfadeyi/errors
 @fyi title CLI`)
 		require.NoError(t, err)
 		assert.EqualValues(t, "v1", app.Version)
 		assert.EqualValues(t, "cli", app.Name)
 		assert.EqualValues(t, "https://tfadeyi.github.io", app.BaseUrl)
 		assert.EqualValues(t, "this is an example description", *app.Description)
+		assert.EqualValues(t, "https://github.com/tfadeyi/errors", app.Repository)
 		assert.EqualValues(t, "CLI", *app.Title)
 	})
 	t.Run("Successfully parse application semver version v1.0.0", func(t *testing.T) {

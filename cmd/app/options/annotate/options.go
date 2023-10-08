@@ -84,7 +84,7 @@ func (o *Options) addAppFlags(fs *pflag.FlagSet) {
 	)
 	fs.BoolVar(
 		&o.AnnotateOnlyTodos,
-		"only-todo",
+		"todo",
 		false,
 		"Annotates only the errors with a TODO comment above",
 	)
